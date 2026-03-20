@@ -1,10 +1,11 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+    <meta http-equiv="Pragma" content="no-cache">
     <title>Skillshelf - Dashboard</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -12,130 +13,97 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'CSS/base.css' %}">
     <link rel="stylesheet" href="{% static 'CSS/Dashboard.css' %}">
-
 </head>
-
 <body>
     {% include 'partials/header.html' %}
 
-    <!-- Main Content -->
     <main class="main-content">
+
+        <!-- Welcome Section -->
         <div class="welcome-section">
-            <h1>Welcome back, Alex!</h1>
+            <h1>Welcome back, {{ user.full_name }}!</h1>
             <p>Here's an overview of your achievements and documents</p>
         </div>
 
         <!-- Stats Cards -->
         <div class="stats-cards">
             <div class="stat-card">
-                <div class="stat-icon">
-                    <i class="fas fa-file-alt"></i>
-                </div>
+                <div class="stat-icon"><i class="fas fa-file-alt"></i></div>
                 <div class="stat-info">
-                    <h3>147</h3>
+                    <h3>{{ total_docs }}</h3>
                     <p>Total Documents</p>
                 </div>
             </div>
-
             <div class="stat-card">
-                <div class="stat-icon">
-                    <i class="fas fa-folder"></i>
-                </div>
+                <div class="stat-icon"><i class="fas fa-folder"></i></div>
                 <div class="stat-info">
-                    <h3>8</h3>
-                    <p>Categories</p>
+                    <h3>{{ categories_used }}</h3>
+                    <p>Categories Used</p>
                 </div>
             </div>
-
             <div class="stat-card">
-                <div class="stat-icon">
-                    <i class="fas fa-clock"></i>
-                </div>
+                <div class="stat-icon"><i class="fas fa-clock"></i></div>
                 <div class="stat-info">
-                    <h3>12</h3>
-                    <p>Recently Added</p>
+                    <h3>{{ recent_count }}</h3>
+                    <p>Added This Week</p>
                 </div>
             </div>
-
             <div class="stat-card">
-                <div class="stat-icon">
-                    <i class="fas fa-share-alt"></i>
-                </div>
+                <div class="stat-icon"><i class="fas fa-database"></i></div>
                 <div class="stat-info">
-                    <h3>23</h3>
-                    <p>Recently Shared</p>
+                    <h3>{{ size_display }}</h3>
+                    <p>Storage Used</p>
                 </div>
             </div>
         </div>
 
         <!-- Main Content Grid -->
         <div class="content-grid">
-            <!-- Recent Documents Section -->
+
+            <!-- Recent Documents -->
             <div class="recent-documents">
                 <div class="section-header">
                     <h2>Recent Documents</h2>
-                    <a href="#" class="view-all">
-                        View All
-                        <i class="fas fa-arrow-right"></i>
+                    <!-- data-href keeps Django URL out of onclick -->
+                    <a href="/documents/" class="view-all">
+                        View All <i class="fas fa-arrow-right"></i>
                     </a>
                 </div>
 
                 <div class="documents-list">
-                    <div class="document-item">
-                        <div class="doc-icon doc-certificate">
-                            <i class="fas fa-award"></i>
-                        </div>
-                        <div class="doc-info">
-                            <h4>Web Development Certificate</h4>
-                            <p>Issued by Coursera • Valid until 2025</p>
-                        </div>
-                        <div class="doc-meta">
-                            <span><i class="far fa-calendar"></i> May 12, 2023</span>
-                            <span><i class="fas fa-file-pdf"></i> 2.4 MB</span>
-                        </div>
-                    </div>
-
-                    <div class="document-item">
-                        <div class="doc-icon doc-academic">
-                            <i class="fas fa-graduation-cap"></i>
-                        </div>
-                        <div class="doc-info">
-                            <h4>Semester 5 Mark Sheet</h4>
-                            <p>Computer Science • GPA: 3.8/4.0</p>
-                        </div>
-                        <div class="doc-meta">
-                            <span><i class="far fa-calendar"></i> May 10, 2023</span>
-                            <span><i class="fas fa-file-pdf"></i> 1.8 MB</span>
-                        </div>
-                    </div>
-
-                    <div class="document-item">
-                        <div class="doc-icon doc-achievement">
-                            <i class="fas fa-trophy"></i>
-                        </div>
-                        <div class="doc-info">
-                            <h4>Hackathon Winner Certificate</h4>
-                            <p>National Level Competition • 1st Prize</p>
-                        </div>
-                        <div class="doc-meta">
-                            <span><i class="far fa-calendar"></i> May 8, 2023</span>
-                            <span><i class="fas fa-file-image"></i> 3.2 MB</span>
-                        </div>
-                    </div>
-
-                    <div class="document-item">
+                    {% for doc in recent_docs %}
+                    <!-- data-url used by JS below — no onclick with Django tags -->
+                    <div class="document-item doc-clickable"
+                         data-url="/documents/">
                         <div class="doc-icon doc-other">
-                            <i class="fas fa-certificate"></i>
+                            <i class="fas {{ doc.file_icon }}"></i>
                         </div>
                         <div class="doc-info">
-                            <h4>Data Science Specialization</h4>
-                            <p>Issued by IBM • 5-course specialization</p>
+                            <h4>{{ doc.title }}</h4>
+                            <p>{{ doc.category_display }} &bull; {{ doc.file_type|upper }}</p>
                         </div>
                         <div class="doc-meta">
-                            <span><i class="far fa-calendar"></i> May 5, 2023</span>
-                            <span><i class="fas fa-file-pdf"></i> 4.1 MB</span>
+                            <span>
+                                <i class="far fa-calendar"></i>
+                                {{ doc.uploaded_at|date:"M d, Y" }}
+                            </span>
+                            <span>
+                                <i class="fas fa-file"></i>
+                                {{ doc.file_size_display }}
+                            </span>
                         </div>
                     </div>
+                    {% empty %}
+                    <div style="text-align:center;padding:40px;color:#8798AD;">
+                        <i class="fas fa-folder-open"
+                           style="font-size:48px;margin-bottom:16px;display:block;opacity:0.4;"></i>
+                        <p>No documents yet.</p>
+                        <a href="/upload/"
+                           style="color:#2E5BFF;font-weight:600;">
+                            Upload your first document
+                        </a>
+                    </div>
+                    {% endfor %}
                 </div>
             </div>
 
@@ -147,20 +115,20 @@
 
                 <div class="stats-list">
                     <div class="stat-item">
-                        <span class="stat-label">Verified Documents</span>
-                        <span class="stat-value">89%</span>
+                        <span class="stat-label">Total Documents</span>
+                        <span class="stat-value">{{ total_docs }}</span>
                     </div>
                     <div class="stat-item">
                         <span class="stat-label">Storage Used</span>
-                        <span class="stat-value">2.3 GB</span>
+                        <span class="stat-value">{{ size_display }}</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-label">Shared This Month</span>
-                        <span class="stat-value">7</span>
+                        <span class="stat-label">Categories Used</span>
+                        <span class="stat-value">{{ categories_used }}</span>
                     </div>
                     <div class="stat-item">
-                        <span class="stat-label">Expiring Soon</span>
-                        <span class="stat-value">3</span>
+                        <span class="stat-label">Added This Week</span>
+                        <span class="stat-value">{{ recent_count }}</span>
                     </div>
                 </div>
 
@@ -170,24 +138,24 @@
                     </div>
 
                     <div class="action-buttons">
-                        <button class="action-btn">
+                        <a href="/upload/" class="action-btn">
                             <i class="fas fa-file-upload"></i>
                             Upload New Document
-                        </button>
-                        <button class="action-btn">
-                            <i class="fas fa-folder-plus"></i>
-                            Create New Category
-                        </button>
-                        <button class="action-btn">
-                            <i class="fas fa-share-alt"></i>
-                            Share Documents
-                        </button>
+                        </a>
+                        <a href="/documents/" class="action-btn">
+                            <i class="fas fa-folder-open"></i>
+                            Browse All Documents
+                        </a>
+                        <a href="/profile/" class="action-btn">
+                            <i class="fas fa-user-edit"></i>
+                            Edit My Profile
+                        </a>
                     </div>
 
-                    <button class="upload-btn">
+                    <a href="/upload/" class="upload-btn">
                         <i class="fas fa-cloud-upload-alt"></i>
                         Quick Upload
-                    </button>
+                    </a>
                 </div>
             </div>
         </div>
@@ -196,99 +164,36 @@
         <div class="categories-section">
             <div class="section-header">
                 <h2>Document Categories</h2>
-                <a href="#" class="view-all">
-                    Manage Categories
+                <a href="/documents/" class="view-all">
+                    View All Documents
                     <i class="fas fa-arrow-right"></i>
                 </a>
             </div>
 
             <div class="categories-list">
-                <div class="category-tag">
-                    <i class="fas fa-graduation-cap"></i>
-                    Academic Records
-                </div>
-                <div class="category-tag">
-                    <i class="fas fa-medal"></i>
-                    Academic Achievements
-                </div>
-                <div class="category-tag">
-                    <i class="fas fa-award"></i>
-                    Professional Awards
-                </div>
-                <div class="category-tag">
-                    <i class="fas fa-trophy"></i>
-                    Competition Awards
-                </div>
-                <div class="category-tag">
-                    <i class="fas fa-award"></i>
-                    Certifications
-                </div>
-                <div class="category-tag">
-                    <i class="fas fa-file-contract"></i>
-                    Internship Documents
-                </div>
-                <div class="category-tag">
-                    <i class="fas fa-id-badge"></i>
-                    Identity Documents
-                </div>
-                <div class="category-tag">
-                    <i class="fas fa-certificate"></i>
-                    Professional Certifications
-                </div>
-                <div class="category-tag">
-                    <i class="fas fa-laptop-code"></i>
-                    Technical Certifications
-                </div>
-                <div class="category-tag">
-                    <i class="fas fa-landmark"></i>
-                    Government/Legal Certificates
-                </div>
-                <div class="category-tag">
-                    <i class="fas fa-project-diagram"></i>
-                    Projects
-                </div>
-                <div class="category-tag">
-                    <i class="fas fa-language"></i>
-                    Language Certificates
-                </div>
-                <div class="category-tag">
-                    <i class="fas fa-home"></i>
-                    Address Proofs
-                </div>
-                <div class="category-tag">
-                    <i class="fas fa-building"></i>
-                    Business Documents
-                </div>
-
-                <!-- Project & Portfolio Categories -->
-                <div class="category-tag">
-                    <i class="fas fa-project-diagram"></i>
-                    Project Documents
-                </div>
-                <div class="category-tag">
-                    <i class="fas fa-users"></i>
-                    Recommendation Letters
-                </div>
-                <div class="category-tag">
-                    <i class="fas fa-briefcase"></i>
-                    Employment Documents
-                </div>
-                <div class="category-tag">
-                    <i class="fas fa-heartbeat"></i>
-                    Health Certificates
-                </div>
-                <div class="category-tag">
-                    <i class="fas fa-house-user"></i>
-                    Property Documents
-                </div>
-
+                {% for slug, label in categories %}
+                <a href="/documents/?category={{ slug }}"
+                   class="category-tag"
+                   style="text-decoration:none;cursor:pointer;">
+                    {{ label }}
+                </a>
+                {% endfor %}
             </div>
         </div>
 
-        {% include 'partials/footer.html' %}
     </main>
 
-    <script src="{% static 'JS/Dashboard.js' %}"></script>
-</body>
+    {% include 'partials/footer.html' %}
 
+    <script src="{% static 'JS/Dashboard.js' %}"></script>
+    <script>
+    // Wire up document-item clicks using data-url (no Django tags in JS)
+    document.querySelectorAll('.doc-clickable').forEach(function(el) {
+        el.style.cursor = 'pointer';
+        el.addEventListener('click', function() {
+            window.location.href = el.getAttribute('data-url');
+        });
+    });
+    </script>
+</body>
 </html>

@@ -4,388 +4,444 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Profile Management</title>
+    <title>Profile Management - Skill Shelf</title>
+
+    <!-- ── Prevent browser caching — back button after logout must not work ── -->
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <link rel="stylesheet" href="{% static 'CSS/base.css' %}">
     <link rel="stylesheet" href="{% static 'CSS/profile.css' %}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
+{% for message in messages %}
+<body
+    data-flash-msg="{{ message }}"
+    data-flash-type="{% if message.tags == 'error' %}error{% else %}success{% endif %}">
+{% empty %}
 <body>
-    {% include 'partials/header.html' %}
+{% endfor %}
 
-    <!-- MAIN CONTAINER -->
-    <main class="container">
-        <h1 class="page-title">Profile Management</h1>
-        <p class="page-subtitle">Manage your personal information and account security</p>
-        
-        <!-- SMALL PROFILE COMPLETION -->
-        <div class="completion-small">
-            <span class="completion-label-small">Profile Completion:</span>
-            <span class="completion-percent-small" id="completionPercent">0%</span>
-            <div class="progress-bar-small">
-                <div class="progress-fill-small" id="progressFill"></div>
+{% include 'partials/header.html' %}
+
+<main class="container">
+
+    <h1 class="page-title">Profile Management</h1>
+    <p class="page-subtitle">Manage your personal information and account security</p>
+
+    <!-- Profile Completion Bar -->
+    <div class="completion-small">
+        <span class="completion-label-small">Profile Completion:</span>
+        <span class="completion-percent-small" id="completionPercent">0%</span>
+        <div class="progress-bar-small">
+            <div class="progress-fill-small" id="progressFill"></div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs-container">
+        <button class="tab active" onclick="switchTab('profile')">Profile</button>
+        <button class="tab" onclick="switchTab('security')">Security</button>
+        <button class="tab" onclick="switchTab('settings')">Settings</button>
+    </div>
+
+
+    <!-- ═══════════════════════════
+         PROFILE TAB
+    ════════════════════════════ -->
+    <section id="profileTab" class="tab-content">
+        <div class="card">
+
+            <div class="card-header">
+                <div>
+                    <h2 class="card-title">Personal Information</h2>
+                    <p class="card-subtitle">Update your basic profile details</p>
+                </div>
             </div>
-        </div>
-        
-        <!-- TABS -->
-        <div class="tabs-container">
-            <button class="tab active" onclick="switchTab('profile')">Profile</button>
-            <button class="tab" onclick="switchTab('security')">Security</button>
-            <button class="tab" onclick="switchTab('settings')">Settings</button>
-        </div>
-        
-        <!-- PROFILE TAB -->
-        <section id="profileTab" class="tab-content">
-            <div class="card">
-                <div class="card-header">
-                    <div>
-                        <h2 class="card-title">Personal Information</h2>
-                        <p class="card-subtitle">Update your basic profile details</p>
-                    </div>
-                </div>
-                
-                <!-- PROFILE HEADER -->
-                <div class="profile-header">
-                    <div class="avatar-container">
-                        <div class="profile-avatar" id="profileAvatar">JD</div>
-                        <div class="avatar-overlay" onclick="document.getElementById('photoInput').click()">
-                            📷
+
+            <!-- Avatar + Name -->
+            <div class="profile-header">
+                <div class="avatar-container">
+                    {% if user.profile_photo %}
+                        <img src="{{ user.profile_photo.url }}"
+                             class="profile-avatar"
+                             id="profileAvatarImg"
+                             alt="Profile Photo">
+                    {% else %}
+                        <div class="profile-avatar" id="profileAvatar">
+                            {{ user.full_name|slice:":2"|upper }}
                         </div>
-                        <input type="file" id="photoInput" accept="image/*" hidden onchange="updateProfilePhoto(event)">
-                    </div>
-                    <div class="profile-info">
-                        <h2 id="displayName">Indhumathi S</h2>
-                        <p class="profile-role">Premium Member</p>
-                        <p class="profile-bio" id="displayBio">Welcome to your unified digital profile.</p>
+                    {% endif %}
+                    <div class="avatar-overlay" onclick="document.getElementById('photoInput').click()">
+                        📷
                     </div>
                 </div>
-                
-                <!-- BASIC INFORMATION FORM -->
+                <div class="profile-info">
+                    <h2>{{ user.full_name }}</h2>
+                    <p class="profile-role">Member since {{ user.date_joined|date:"F Y" }}</p>
+                    <p class="profile-bio">{{ user.bio|default:"Welcome to your unified digital profile." }}</p>
+                </div>
+            </div>
+
+            <!-- Profile Form -->
+            <form method="POST" action="{% url 'profile' %}" enctype="multipart/form-data">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="save_profile">
+
+                <!-- Hidden photo input triggered by avatar overlay -->
+                <input type="file" id="photoInput" name="profile_photo"
+                       accept="image/*" hidden onchange="previewPhoto(event)">
+
                 <div class="form-section">
                     <h3 class="section-title">Basic Information</h3>
-                    
+
                     <div class="form-row">
                         <div class="form-group">
                             <label class="form-label">
                                 Full Name <span class="required">*</span>
                             </label>
-                            <input type="text" class="form-control track" placeholder="Enter your full name" id="fullName">
+                            <input type="text" class="form-control"
+                                   id="fullName" name="fullName"
+                                   placeholder="Enter your full name"
+                                   value="{{ user.full_name }}" required>
                         </div>
                         <div class="form-group">
                             <label class="form-label">
                                 Email Address <span class="required">*</span>
                             </label>
-                            <input type="email" class="form-control track" placeholder="your.email@example.com" id="email">
+                            <input type="email" class="form-control"
+                                   id="email" name="email"
+                                   placeholder="your.email@example.com"
+                                   value="{{ user.email }}" required>
                         </div>
                     </div>
-                    
+
                     <div class="form-row">
                         <div class="form-group">
-                            <label class="form-label">
-                                Phone Number <span class="required">*</span>
-                            </label>
-                            <input type="tel" class="form-control track" placeholder="+91 98765 43210" id="phone">
+                            <label class="form-label">Phone Number</label>
+                            <input type="tel" class="form-control"
+                                   id="phone" name="phone"
+                                   placeholder="+91 98765 43210"
+                                   value="{{ user.phone }}">
                         </div>
                         <div class="form-group">
                             <label class="form-label">Gender</label>
-                            <select class="form-control track" id="gender">
+                            <select class="form-control"
+                                    id="gender" name="gender">
                                 <option value="">Select Gender</option>
-                                <option value="male">Male</option>
-                                <option value="female">Female</option>
-                                <option value="other">Other</option>
-                                <option value="prefer-not-to-say">Prefer not to say</option>
+                                <option value="male"
+                                    {% if user.gender == "male" %}selected{% endif %}>Male</option>
+                                <option value="female"
+                                    {% if user.gender == "female" %}selected{% endif %}>Female</option>
+                                <option value="other"
+                                    {% if user.gender == "other" %}selected{% endif %}>Other</option>
+                                <option value="prefer-not-to-say"
+                                    {% if user.gender == "prefer-not-to-say" %}selected{% endif %}>Prefer not to say</option>
                             </select>
                         </div>
                     </div>
-                    
+
                     <div class="form-row">
                         <div class="form-group">
                             <label class="form-label">Date of Birth</label>
-                            <input type="date" class="form-control track" id="dob">
+                            <input type="date" class="form-control"
+                                   id="dob" name="dob"
+                                   value="{{ user.date_of_birth|date:'Y-m-d' }}">
                         </div>
                         <div class="form-group">
                             <label class="form-label">Nationality</label>
-                            <input type="text" class="form-control track" placeholder="Your nationality" id="nationality">
+                            <input type="text" class="form-control"
+                                   id="nationality" name="nationality"
+                                   placeholder="Your nationality"
+                                   value="{{ user.nationality }}">
                         </div>
                     </div>
-                    
+
                     <div class="form-group full-width">
                         <label class="form-label">Address</label>
-                        <textarea class="form-control track" placeholder="Enter your full address..." rows="2" id="address"></textarea>
+                        <textarea class="form-control"
+                                  id="address" name="address"
+                                  rows="2"
+                                  placeholder="Enter your full address...">{{ user.address }}</textarea>
                     </div>
-                    
+
                     <div class="form-group full-width">
                         <label class="form-label">Bio</label>
-                        <textarea class="form-control track" placeholder="Tell us about yourself..." rows="3" id="bio"></textarea>
+                        <textarea class="form-control"
+                                  id="bio" name="bio"
+                                  rows="3"
+                                  placeholder="Tell us about yourself...">{{ user.bio }}</textarea>
                     </div>
+
                 </div>
-                
-                <!-- ACTION BUTTONS -->
+
                 <div class="action-buttons">
-                    <button class="btn btn-primary" onclick="saveProfile()">
-                        Save Changes
-                    </button>
-                    <button class="btn btn-secondary" onclick="resetForm()">
-                        Reset
-                    </button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                    <button type="reset" class="btn btn-secondary">Reset</button>
+                </div>
+
+            </form>
+        </div>
+    </section>
+
+
+    <!-- ═══════════════════════════
+         SECURITY TAB
+    ════════════════════════════ -->
+    <section id="securityTab" class="tab-content hidden">
+        <div class="card">
+
+            <div class="card-header">
+                <div>
+                    <h2 class="card-title">Account Security</h2>
+                    <p class="card-subtitle">Update your password</p>
                 </div>
             </div>
-        </section>
-        
-        <!-- SECURITY TAB -->
-        <section id="securityTab" class="tab-content hidden">
-            <div class="card">
-                <div class="card-header">
-                    <div>
-                        <h2 class="card-title">Account Security</h2>
-                        <p class="card-subtitle">Manage your password and security settings</p>
-                    </div>
-                </div>
-                
-                <!-- PASSWORD CHANGE SECTION -->
+
+            <form method="POST" action="{% url 'profile' %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="change_password">
+
                 <div class="form-section">
                     <h3 class="section-title">Change Password</h3>
-                    
+
                     <div class="form-row">
                         <div class="form-group">
                             <label class="form-label">Current Password</label>
-                            <input type="password" class="form-control" placeholder="Enter current password" id="currentPassword">
+                            <!--
+                                The placeholder shows bullets to mimic a pre-filled password.
+                                The user must type their actual current password.
+                                We NEVER put the real password in value="" — that is a security risk.
+                            -->
+                            <input type="password" class="form-control"
+                                   id="currentPassword"
+                                   name="currentPassword"
+                                   placeholder="••••••••"
+                                   autocomplete="current-password">
+                            <p class="card-subtitle">Type your current password to verify your identity</p>
                         </div>
                     </div>
-                    
+
                     <div class="form-row">
                         <div class="form-group">
                             <label class="form-label">New Password</label>
-                            <input type="password" class="form-control" placeholder="Minimum 8 characters" 
-                                   id="newPassword" oninput="checkPasswordStrength(this.value)">
+                            <input type="password" class="form-control"
+                                   id="newPassword"
+                                   name="newPassword"
+                                   placeholder="Minimum 8 characters"
+                                   oninput="checkPasswordStrength(this.value)"
+                                   autocomplete="new-password">
                         </div>
                         <div class="form-group">
                             <label class="form-label">Confirm New Password</label>
-                            <input type="password" class="form-control" placeholder="Re-enter new password" 
-                                   id="confirmPassword" oninput="validatePasswordMatch()">
+                            <input type="password" class="form-control"
+                                   id="confirmPassword"
+                                   name="confirmPassword"
+                                   placeholder="Re-enter new password"
+                                   oninput="validatePasswordMatch()"
+                                   autocomplete="new-password">
                         </div>
                     </div>
-                    
-                    <!-- PASSWORD STRENGTH -->
+
+                    <!-- Strength bar -->
                     <div class="password-strength">
                         <div class="strength-bar">
                             <div class="strength-fill" id="strengthFill"></div>
                         </div>
                         <p class="strength-text" id="strengthText">Enter a password to check strength</p>
                     </div>
-                    
-                    <!-- PASSWORD REQUIREMENTS -->
-                    <div class="form-group full-width" style="margin-top: 20px;">
-                        <div class="card-subtitle" style="margin-bottom: 12px;">Password must contain:</div>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px;">
-                            <div style="display: flex; align-items: center; gap: 8px;">
+
+                    <!-- Requirements -->
+                    <div class="form-group full-width">
+                        <p class="card-subtitle">Password must contain:</p>
+                        <div class="pw-reqs">
+                            <div class="pw-req-item">
                                 <span id="reqLength" class="text-danger">●</span>
-                                <span style="font-size: 13px;">At least 8 characters</span>
+                                <span>At least 8 characters</span>
                             </div>
-                            <div style="display: flex; align-items: center; gap: 8px;">
+                            <div class="pw-req-item">
                                 <span id="reqUpper" class="text-danger">●</span>
-                                <span style="font-size: 13px;">One uppercase letter</span>
+                                <span>One uppercase letter</span>
                             </div>
-                            <div style="display: flex; align-items: center; gap: 8px;">
+                            <div class="pw-req-item">
                                 <span id="reqLower" class="text-danger">●</span>
-                                <span style="font-size: 13px;">One lowercase letter</span>
+                                <span>One lowercase letter</span>
                             </div>
-                            <div style="display: flex; align-items: center; gap: 8px;">
+                            <div class="pw-req-item">
                                 <span id="reqNumber" class="text-danger">●</span>
-                                <span style="font-size: 13px;">One number</span>
+                                <span>One number</span>
                             </div>
                         </div>
                     </div>
-                    
-                    <div class="action-buttons" style="margin-top: 30px;">
-                        <button class="btn btn-primary" onclick="updatePassword()">
-                            Update Password
-                        </button>
-                    </div>
+
                 </div>
-                
-                <!-- TWO-FACTOR AUTHENTICATION -->
-                <div class="form-section">
-                    <h3 class="section-title">Two-Factor Authentication</h3>
-                    
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Enable 2FA</label>
-                            <div style="display: flex; align-items: center; gap: 12px; margin-top: 8px;">
-                                <label class="switch">
-                                    <input type="checkbox" id="twoFactorToggle">
-                                    <span class="slider"></span>
-                                </label>
-                                <span id="twoFactorStatus">Disabled</span>
-                            </div>
-                            <p class="card-subtitle" style="margin-top: 8px;">
-                                Add an extra layer of security to your account
-                            </p>
+
+                <div class="action-buttons">
+                    <button type="submit" class="btn btn-primary">Update Password</button>
+                </div>
+
+            </form>
+        </div>
+    </section>
+
+
+    <!-- ═══════════════════════════
+         SETTINGS TAB
+    ════════════════════════════ -->
+    <section id="settingsTab" class="tab-content hidden">
+        <div class="card">
+
+            <div class="card-header">
+                <div>
+                    <h2 class="card-title">Settings</h2>
+                    <p class="card-subtitle">Customize your application preferences</p>
+                </div>
+            </div>
+
+            <!-- Appearance -->
+            <div class="form-section">
+                <h3 class="section-title">Appearance</h3>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Theme</label>
+                        <div class="toggle-row">
+                            <label class="switch">
+                                <input type="checkbox" id="darkModeToggle"
+                                       onchange="toggleDarkMode(this)">
+                                <span class="slider"></span>
+                            </label>
+                            <span id="themeStatus">Light Mode</span>
                         </div>
-                    </div>
-                    
-                    <!-- 2FA SETUP (Hidden by default) -->
-                    <div id="twoFactorSetup" class="hidden" style="margin-top: 24px; padding: 20px; background: #f9fafb; border-radius: 12px;">
-                        <h4 style="margin-bottom: 16px; color: #374151;">Setup Two-Factor Authentication</h4>
-                        
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label class="form-label">Phone Number for OTP</label>
-                                <div style="display: flex; gap: 12px;">
-                                    <input type="tel" class="form-control" placeholder="Enter phone number" 
-                                           id="twoFactorPhone" value="">
-                                    <button class="btn btn-outline" onclick="send2FAOTP()">Send OTP</button>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div id="twoFactorOTPBox" class="otp-box hidden">
-                            <div class="otp-input-group">
-                                <input type="text" maxlength="1" class="otp-input" oninput="moveToNext2FA(this, 1)">
-                                <input type="text" maxlength="1" class="otp-input" oninput="moveToNext2FA(this, 2)">
-                                <input type="text" maxlength="1" class="otp-input" oninput="moveToNext2FA(this, 3)">
-                                <input type="text" maxlength="1" class="otp-input" oninput="moveToNext2FA(this, 4)">
-                                <input type="text" maxlength="1" class="otp-input" oninput="moveToNext2FA(this, 5)">
-                                <input type="text" maxlength="1" class="otp-input" oninput="moveToNext2FA(this, 6)">
-                            </div>
-                            <button class="btn btn-primary" onclick="verify2FAOTP()" style="margin-top: 16px;">Verify & Enable</button>
-                            <p id="twoFactorOTPStatus" class="otp-status"></p>
-                        </div>
+                        <p class="card-subtitle">Switch between light and dark theme</p>
                     </div>
                 </div>
             </div>
-        </section>
-        
-        <!-- SETTINGS TAB -->
-        <section id="settingsTab" class="tab-content hidden">
-            <div class="card">
-                <div class="card-header">
-                    <div>
-                        <h2 class="card-title">Settings</h2>
-                        <p class="card-subtitle">Customize your application preferences</p>
+
+            <!-- Notification Settings -->
+            <div class="form-section">
+                <h3 class="section-title">Notifications</h3>
+                <div class="notif-list">
+                    <div class="notif-row">
+                        <div>
+                            <p class="notif-title">Email Notifications</p>
+                            <p class="card-subtitle">Receive updates via email</p>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="emailNotifications" checked>
+                            <span class="slider"></span>
+                        </label>
                     </div>
-                </div>
-                
-                <!-- APPEARANCE SETTINGS -->
-                <div class="form-section">
-                    <h3 class="section-title">Appearance</h3>
-                    
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Theme</label>
-                            <div style="display: flex; align-items: center; gap: 12px; margin-top: 8px;">
-                                <label class="switch">
-                                    <input type="checkbox" id="darkModeToggle">
-                                    <span class="slider"></span>
-                                </label>
-                                <span id="themeStatus">Light Mode</span>
-                            </div>
-                            <p class="card-subtitle" style="margin-top: 8px;">
-                                Switch between light and dark theme
-                            </p>
+                    <div class="notif-row">
+                        <div>
+                            <p class="notif-title">SMS Notifications</p>
+                            <p class="card-subtitle">Receive updates via SMS</p>
                         </div>
+                        <label class="switch">
+                            <input type="checkbox" id="smsNotifications">
+                            <span class="slider"></span>
+                        </label>
                     </div>
-                    
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Language</label>
-                            <select class="form-control" id="language">
-                                <option value="en">English</option>
-                                <option value="es">Spanish</option>
-                                <option value="fr">French</option>
-                                <option value="de">German</option>
-                                <option value="hi">Hindi</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Timezone</label>
-                            <select class="form-control" id="timezone">
-                                <option value="UTC">UTC</option>
-                                <option value="IST">IST (India)</option>
-                                <option value="EST">EST</option>
-                                <option value="PST">PST</option>
-                                <option value="GMT">GMT</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- NOTIFICATION SETTINGS -->
-                <div class="form-section">
-                    <h3 class="section-title">Notifications</h3>
-                    
-                    <div style="display: flex; flex-direction: column; gap: 16px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <div style="font-weight: 500; color: #374151;">Email Notifications</div>
-                                <div style="font-size: 13px; color: #6b7280;">Receive updates via email</div>
-                            </div>
-                            <label class="switch">
-                                <input type="checkbox" id="emailNotifications" checked>
-                                <span class="slider"></span>
-                            </label>
-                        </div>
-                        
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <div style="font-weight: 500; color: #374151;">Push Notifications</div>
-                                <div style="font-size: 13px; color: #6b7280;">Receive browser notifications</div>
-                            </div>
-                            <label class="switch">
-                                <input type="checkbox" id="pushNotifications" checked>
-                                <span class="slider"></span>
-                            </label>
-                        </div>
-                        
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div>
-                                <div style="font-weight: 500; color: #374151;">SMS Notifications</div>
-                                <div style="font-size: 13px; color: #6b7280;">Receive updates via SMS</div>
-                            </div>
-                            <label class="switch">
-                                <input type="checkbox" id="smsNotifications">
-                                <span class="slider"></span>
-                            </label>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- ACCOUNT ACTIONS -->
-                <div class="form-section">
-                    <h3 class="section-title">Account Actions</h3>
-                    
-                    <div style="display: flex; flex-direction: column; gap: 12px;">
-                        <button class="btn btn-secondary" onclick="exportData()" style="justify-content: flex-start;">
-                            📥 Export My Data
-                        </button>
-                        
-                        <button class="btn btn-secondary" onclick="downloadData()" style="justify-content: flex-start;">
-                            ⬇️ Download Backup
-                        </button>
-                        
-                        <button class="btn btn-secondary" onclick="deleteAccount()" style="justify-content: flex-start; color: #dc2626;">
-                            🗑️ Delete Account
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- LOGOUT SECTION -->
-                <div class="action-buttons" style="border-top: 1px solid #e5e7eb; padding-top: 24px;">
-                    <button class="btn btn-primary" onclick="logoutAllDevices()">
-                        Logout from All Devices
-                    </button>
-                    <button class="btn" onclick="logout()" style="background: #fee2e2; color: #dc2626;">
-                        Logout
-                    </button>
                 </div>
             </div>
-        </section>
-    </main>
 
-    {% include 'partials/footer.html' %}
+            <!-- Account Actions -->
+            <div class="form-section">
+                <h3 class="section-title">Account Actions</h3>
+                <div class="action-buttons">
+                    <!-- POST logout — safer than GET, prevents CSRF logout attacks -->
+                    <form method="POST" action="{% url 'logout' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-secondary">
+                            <i class="fa fa-sign-out-alt"></i> Logout
+                        </button>
+                    </form>
+                </div>
+            </div>
 
-    <!-- TOAST CONTAINER -->
-    <div id="toastContainer" style="position: fixed; top: 20px; right: 20px; z-index: 1000;"></div>
+        </div>
+    </section>
 
-    <script src="{% static 'JS/profile.js' %}"></script>
+</main>
+
+{% include 'partials/footer.html' %}
+
+<script src="{% static 'JS/profile.js' %}"></script>
+<script>
+// ── Tab switching ────────────────────────────────────────────
+function switchTab(tab) {
+    document.querySelectorAll('.tab-content').forEach(s => s.classList.add('hidden'));
+    document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+    document.getElementById(tab + 'Tab').classList.remove('hidden');
+    event.currentTarget.classList.add('active');
+}
+
+// ── Profile photo preview before upload ─────────────────────
+function previewPhoto(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        let img = document.getElementById('profileAvatarImg');
+        if (!img) {
+            img = document.createElement('img');
+            img.id = 'profileAvatarImg';
+            img.className = 'profile-avatar';
+            img.alt = 'Profile Photo';
+            const old = document.getElementById('profileAvatar');
+            if (old) old.replaceWith(img);
+        }
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+// ── Password strength checker ────────────────────────────────
+function checkPasswordStrength(value) {
+    const fill = document.getElementById('strengthFill');
+    const text = document.getElementById('strengthText');
+    const hasLength = value.length >= 8;
+    const hasUpper  = /[A-Z]/.test(value);
+    const hasLower  = /[a-z]/.test(value);
+    const hasNumber = /[0-9]/.test(value);
+
+    document.getElementById('reqLength').className = hasLength ? 'text-success' : 'text-danger';
+    document.getElementById('reqUpper').className  = hasUpper  ? 'text-success' : 'text-danger';
+    document.getElementById('reqLower').className  = hasLower  ? 'text-success' : 'text-danger';
+    document.getElementById('reqNumber').className = hasNumber ? 'text-success' : 'text-danger';
+
+    const score = [hasLength, hasUpper, hasLower, hasNumber].filter(Boolean).length;
+    const levels = [
+        { w: '0%',   bg: '',          label: 'Enter a password to check strength' },
+        { w: '25%',  bg: '#ef4444',   label: 'Weak' },
+        { w: '50%',  bg: '#f59e0b',   label: 'Fair' },
+        { w: '75%',  bg: '#3b82f6',   label: 'Good' },
+        { w: '100%', bg: '#10b981',   label: 'Strong' },
+    ];
+    const level = value.length === 0 ? levels[0] : levels[score];
+    fill.style.width      = level.w;
+    fill.style.background = level.bg;
+    text.textContent      = level.label;
+}
+
+// ── Confirm password match ───────────────────────────────────
+function validatePasswordMatch() {
+    const np = document.getElementById('newPassword').value;
+    const cp = document.getElementById('confirmPassword').value;
+    const el = document.getElementById('confirmPassword');
+    if (cp && np !== cp) {
+        el.style.borderColor = '#ef4444';
+    } else {
+        el.style.borderColor = '';
+    }
+}
+
+// ── Dark mode toggle ─────────────────────────────────────────
+function toggleDarkMode(checkbox) {
+    document.body.classList.toggle('dark-mode', checkbox.checked);
+    document.getElementById('themeStatus').textContent =
+        checkbox.checked ? 'Dark Mode' : 'Light Mode';
+}
+</script>
+
 </body>
 </html>

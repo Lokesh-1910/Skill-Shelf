@@ -3,7 +3,14 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Skill Shelf - Login</title>
+
+    <!-- ── Prevent browser from caching this page ── -->
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+
     <link rel="stylesheet" href="{% static 'CSS/login.css' %}">
 </head>
 <body>
@@ -11,33 +18,57 @@
 <div class="page">
     <div class="login-card">
 
-        <h1 id="head1">Welcome Back!</h1><br>
+        <h1 id="head1">Welcome Back!</h1>
 
-        <form>
-            <label>Email or Username</label>
-            <input type="text" placeholder="john.doe@example.com">
+        {% for message in messages %}
+            <p class="msg {% if message.tags == 'error' %}msg-error{% else %}msg-success{% endif %}">
+                {{ message }}
+            </p>
+        {% endfor %}
 
-            <label>Password</label>
-            <input type="password" placeholder="••••••••">
+        <form method="POST" action="{% url 'login' %}">
+            {% csrf_token %}
+
+            <!-- Preserve redirect target if Django set one -->
+            {% if next %}
+                <input type="hidden" name="next" value="{{ next }}">
+            {% endif %}
+
+            <label for="email">Email Address</label>
+            <input type="email" id="email" name="email"
+                   placeholder="john.doe@example.com"
+                   value="{{ request.POST.email }}" required autofocus>
+
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password"
+                   placeholder="••••••••" required>
 
             <div class="options">
                 <label class="remember">
-                    <input type="checkbox">
-                    Remember me
+                    <input type="checkbox" name="remember_me"> Remember me
                 </label>
                 <a href="#" class="forgot">Forgot password?</a>
             </div>
 
-            <button class="login-btn">Login</button><br><br>
+            <button class="login-btn" type="submit">Login</button>
 
             <p class="register">
-                Don't have an account?
-                <a href="/register/">Register</a>
+                Don't have an account? <a href="{% url 'register' %}">Register</a>
             </p>
+
         </form>
 
     </div>
 </div>
+
+<!-- ── If user lands here via back button after logout, redirect them away ── -->
+<script>
+    // Replace the current history entry so back button cannot return here
+    // after a successful login
+    if (window.history && window.history.replaceState) {
+        window.history.replaceState(null, '', window.location.href);
+    }
+</script>
 
 </body>
 </html>

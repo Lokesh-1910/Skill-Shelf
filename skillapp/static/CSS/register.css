@@ -120,3 +120,19 @@ hr {
     text-decoration: none;
 }
 
+/* Flash messages (success / error) */
+.msg {
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 14px;
+    margin-bottom: 16px;
+    font-weight: 500;
+}
+.msg-error {
+    background: #fee2e2;
+    color: #dc2626;
+}
+.msg-success {
+    background: #d1fae5;
+    color: #065f46;
+}

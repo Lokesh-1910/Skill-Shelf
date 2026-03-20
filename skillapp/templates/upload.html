@@ -4,21 +4,36 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Cache-Control"
+      content="no-store, no-cache, must-revalidate, max-age=0"
+    />
+    <meta http-equiv="Pragma" content="no-cache" />
     <title>Upload Documents - Skill Shelf</title>
     <link rel="stylesheet" href="{% static 'CSS/base.css' %}" />
     <link rel="stylesheet" href="{% static 'CSS/upload.css' %}" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
   </head>
   <body>
     {% include 'partials/header.html' %}
 
-    <!-- Main Content -->
     <main class="upload-page">
-      <!-- Header -->
       <header class="page-header">
         <h1><i class="fas fa-upload"></i> Upload Documents</h1>
         <p>Add new documents to your Skill Shelf library</p>
       </header>
+
+      <!-- Flash messages from Django (shown on page load) -->
+      {% for message in messages %}
+      <div
+        class="message {% if message.tags == 'error' %}error{% else %}success{% endif %}"
+      >
+        {{ message }}
+      </div>
+      {% endfor %}
 
       <!-- Upload Steps -->
       <section class="upload-steps">
@@ -42,18 +57,20 @@
         </div>
       </section>
 
-      <!-- Upload Form -->
+      <!-- CSRF token read by JS -->
+      {% csrf_token %}
+
       <div class="upload-form">
-        <!-- Left Side: File Selection & Details -->
+        <!-- LEFT: File Selection & Details -->
         <div class="upload-left">
-          <!-- Step 1: File Selection -->
           <section class="upload-section">
             <h3><i class="fas fa-file"></i> Step 1: Select Your Files</h3>
+
             <div class="file-drop-area" id="dropZone">
               <i class="fas fa-cloud-upload-alt"></i>
               <h4>Drag & Drop Your Files Here</h4>
               <p>or click to browse</p>
-              <button class="browse-btn" id="browseBtn">
+              <button type="button" class="browse-btn" id="browseBtn">
                 <i class="fas fa-folder-open"></i> Browse Files
               </button>
               <p class="file-types">
@@ -62,13 +79,13 @@
               <input
                 type="file"
                 id="fileInput"
+                name="files"
                 multiple
                 accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.zip"
                 hidden
               />
             </div>
 
-            <!-- Selected Files -->
             <div class="selected-files">
               <h4>Selected Files (<span id="fileCount">0</span>)</h4>
               <div class="file-list" id="fileList">
@@ -80,29 +97,41 @@
             </div>
           </section>
 
-          <!-- Step 2: Document Details -->
           <section class="upload-section">
             <h3><i class="fas fa-edit"></i> Step 2: Document Details</h3>
 
             <div class="form-group">
-              <label><i class="fas fa-tag"></i> Document Type</label>
-              <select id="docType">
-                <option value="">Select Document Type</option>
-                <option value="academic">Academic</option>
-                <option value="certificate">Certificate</option>
-                <option value="id">ID Document</option>
-                <option value="marksheet">Marksheet</option>
+              <label>
+                <i class="fas fa-heading"></i> Document Title
+                <small style="font-weight: 400; color: #888">
+                  (optional — uses filename if blank)
+                </small>
+              </label>
+              <input
+                type="text"
+                id="docTitle"
+                placeholder="e.g. Semester 5 Marksheet"
+              />
+            </div>
+
+            <div class="form-group">
+              <label><i class="fas fa-folder"></i> Document Category *</label>
+              <select id="docCategory">
+                <option value="">Select Document Category</option>
+                {% for slug, label in categories %}
+                <option value="{{ slug }}">{{ label }}</option>
+                {% endfor %}
               </select>
             </div>
 
             <div class="form-group">
-              <label><i class="fas fa-hashtag"></i> Tags</label>
-              <input
-                type="text"
-                id="tags"
-                placeholder="Type tags and press Enter..."
-              />
-              <small>Separate multiple tags with commas</small>
+              <label><i class="fas fa-hashtag"></i> Tag</label>
+              <select id="docTag">
+                {% for value, label in tag_choices %}
+                <option value="{{ value }}">{{ label }}</option>
+                {% endfor %}
+              </select>
+              <small>Helps you filter documents later</small>
             </div>
 
             <div class="form-group">
@@ -115,12 +144,11 @@
           </section>
         </div>
 
-        <!-- Right Side: Upload Progress -->
+        <!-- RIGHT: Upload Progress -->
         <div class="upload-right">
           <section class="upload-section">
             <h3><i class="fas fa-chart-line"></i> Step 3: Upload Progress</h3>
 
-            <!-- Upload Status -->
             <div class="upload-status">
               <div class="status-header">
                 <h4>Upload Status</h4>
@@ -145,7 +173,6 @@
                 </div>
               </div>
 
-              <!-- Upload Queue -->
               <div class="upload-queue" id="uploadQueue">
                 <div class="no-uploads">
                   <i class="fas fa-upload"></i>
@@ -154,32 +181,41 @@
                 </div>
               </div>
 
-              <!-- Upload Actions -->
               <div class="upload-actions">
-                <button class="btn clear-btn" id="clearBtn">
+                <button type="button" class="btn clear-btn" id="clearBtn">
                   <i class="fas fa-trash"></i> Clear Selection
                 </button>
-                <button class="btn upload-btn" id="uploadBtn">
+                <button
+                  type="button"
+                  class="btn upload-btn"
+                  id="uploadBtn"
+                  disabled
+                >
                   <i class="fas fa-cloud-upload-alt"></i> Start Upload
                 </button>
               </div>
             </div>
 
-            <!-- Storage Info -->
             <div class="storage-info">
               <h4><i class="fas fa-database"></i> Storage Information</h4>
               <div class="storage-bar">
-                <div class="storage-fill" style="width: 60%"></div>
+                <div
+                  class="storage-fill"
+                  id="storageFill"
+                  style="width: 0%"
+                ></div>
               </div>
-              <p>1.2 GB used of 2 GB <span>40% free space</span></p>
+              <p>
+                <span>{{ storage_used|default:"0 MB" }}</span> used
+                <span>of 2 GB</span>
+              </p>
             </div>
 
-            <!-- Upload Tips -->
             <div class="upload-tips">
               <h4><i class="fas fa-lightbulb"></i> Upload Tips</h4>
               <ul>
                 <li>Keep file names descriptive</li>
-                <li>Add relevant tags to categorize</li>
+                <li>Add a category to organise your shelf</li>
                 <li>Max file size: 10MB per document</li>
                 <li>Upload multiple files at once</li>
               </ul>
@@ -191,6 +227,344 @@
 
     {% include 'partials/footer.html' %}
 
-    <script src="{% static 'JS/upload.js' %}"></script>
+    <script>
+      // ================================================================
+      //  All upload logic is inline — no dependency on static JS file
+      // ================================================================
+
+      var selectedFiles = [];
+      var MAX_SIZE = 10 * 1024 * 1024;
+      var VALID_EXTS = [
+        ".pdf",
+        ".doc",
+        ".docx",
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".zip",
+      ];
+      var AJAX_URL = "/upload/ajax/";
+      var DOCS_URL = "/documents/";
+
+      // ── DOM refs ─────────────────────────────────────────────────────
+      var dropZone = document.getElementById("dropZone");
+      var fileInput = document.getElementById("fileInput");
+      var browseBtn = document.getElementById("browseBtn");
+      var fileList = document.getElementById("fileList");
+      var fileCount = document.getElementById("fileCount");
+      var uploadQueue = document.getElementById("uploadQueue");
+      var uploadBtn = document.getElementById("uploadBtn");
+      var clearBtn = document.getElementById("clearBtn");
+
+      // ── Browse button ─────────────────────────────────────────────────
+      browseBtn.addEventListener("click", function () {
+        fileInput.click();
+      });
+
+      // ── File input change ─────────────────────────────────────────────
+      fileInput.addEventListener("change", function () {
+        handleFiles(this.files);
+      });
+
+      // ── Drag & drop ───────────────────────────────────────────────────
+      dropZone.addEventListener("dragover", function (e) {
+        e.preventDefault();
+        dropZone.classList.add("dragover");
+      });
+      dropZone.addEventListener("dragleave", function () {
+        dropZone.classList.remove("dragover");
+      });
+      dropZone.addEventListener("drop", function (e) {
+        e.preventDefault();
+        dropZone.classList.remove("dragover");
+        handleFiles(e.dataTransfer.files);
+      });
+
+      // ── Clear button ──────────────────────────────────────────────────
+      clearBtn.addEventListener("click", function () {
+        selectedFiles = [];
+        fileInput.value = "";
+        renderFileList();
+        resetStats();
+        uploadQueue.innerHTML =
+          '<div class="no-uploads">' +
+          '<i class="fas fa-upload"></i>' +
+          "<p>No uploads in progress</p>" +
+          "<small>Selected files will appear here</small>" +
+          "</div>";
+        showMsg("Selection cleared", "info");
+      });
+
+      // ── Upload button ─────────────────────────────────────────────────
+      uploadBtn.addEventListener("click", function () {
+        startUpload();
+      });
+
+      // ── Handle selected files ─────────────────────────────────────────
+      function handleFiles(list) {
+        var added = 0;
+        for (var i = 0; i < list.length; i++) {
+          var f = list[i];
+          if (f.size > MAX_SIZE) {
+            showMsg(f.name + " exceeds 10 MB", "error");
+            continue;
+          }
+          var ext = "." + f.name.split(".").pop().toLowerCase();
+          if (!VALID_EXTS.includes(ext)) {
+            showMsg(f.name + " — unsupported type", "error");
+            continue;
+          }
+          selectedFiles.push({
+            id: Date.now() + i,
+            file: f,
+            name: f.name,
+            size: fmtSize(f.size),
+          });
+          added++;
+        }
+        renderFileList();
+        if (added > 0) showMsg(added + " file(s) selected", "success");
+      }
+
+      // ── Render selected files list ────────────────────────────────────
+      function renderFileList() {
+        fileCount.textContent = selectedFiles.length;
+        if (selectedFiles.length === 0) {
+          fileList.innerHTML =
+            '<div class="no-files"><i class="fas fa-file"></i>' +
+            "<p>No files selected yet</p></div>";
+          uploadBtn.disabled = true;
+          return;
+        }
+        uploadBtn.disabled = false;
+        fileList.innerHTML = selectedFiles
+          .map(function (f) {
+            return (
+              '<div class="file-item">' +
+              '<div class="file-info">' +
+              '<i class="fas fa-file-alt"></i>' +
+              '<div><div class="file-name">' +
+              f.name +
+              "</div>" +
+              '<div class="file-size">' +
+              f.size +
+              "</div></div>" +
+              "</div>" +
+              '<div class="file-actions">' +
+              '<button class="btn-remove" data-id="' +
+              f.id +
+              '">' +
+              '<i class="fas fa-times"></i></button>' +
+              "</div></div>"
+            );
+          })
+          .join("");
+
+        // Wire remove buttons
+        fileList.querySelectorAll(".btn-remove").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            var id = parseFloat(btn.getAttribute("data-id"));
+            selectedFiles = selectedFiles.filter(function (f) {
+              return f.id !== id;
+            });
+            renderFileList();
+          });
+        });
+      }
+
+      // ── Main upload ───────────────────────────────────────────────────
+      async function startUpload() {
+        if (selectedFiles.length === 0) return;
+
+        var category = document.getElementById("docCategory").value;
+        var tags = document.getElementById("docTag").value;
+        var description = document.getElementById("description").value;
+        var title = document.getElementById("docTitle").value;
+
+        if (!category) {
+          showMsg("Please select a document category", "error");
+          document.getElementById("docCategory").focus();
+          return;
+        }
+
+        // Disable buttons
+        uploadBtn.disabled = true;
+        clearBtn.disabled = true;
+        uploadBtn.innerHTML =
+          '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+
+        // Clear queue
+        uploadQueue.innerHTML = "";
+        resetStats();
+
+        var ok = 0,
+          fail = 0,
+          total = selectedFiles.length;
+        var csrf = getCSRF();
+
+        for (var i = 0; i < selectedFiles.length; i++) {
+          var fileObj = selectedFiles[i];
+
+          // Add queue item with progress bar
+          var item = document.createElement("div");
+          item.className = "upload-item";
+          item.innerHTML =
+            '<div class="file-info">' +
+            '<i class="fas fa-file-alt"></i>' +
+            '<div><div class="file-name">' +
+            fileObj.name +
+            "</div>" +
+            '<div class="file-size">' +
+            fileObj.size +
+            "</div>" +
+            '<div class="upload-progress">' +
+            '<div class="progress-fill" style="width:0%"></div>' +
+            "</div></div></div>" +
+            '<div class="upload-status">Uploading...</div>';
+          uploadQueue.appendChild(item);
+
+          var bar = item.querySelector(".progress-fill");
+          var status = item.querySelector(".upload-status");
+
+          // Animate bar while waiting
+          var pct = 0;
+          var ticker = setInterval(function () {
+            pct = Math.min(80, pct + Math.random() * 12);
+            bar.style.width = pct + "%";
+          }, 200);
+
+          try {
+            var fd = new FormData();
+            fd.append("files", fileObj.file);
+            fd.append("category", category);
+            fd.append("tags", tags);
+            fd.append("description", description);
+            fd.append("title", title);
+            fd.append("csrfmiddlewaretoken", csrf);
+
+            var resp = await fetch(AJAX_URL, { method: "POST", body: fd });
+            clearInterval(ticker);
+            var data = await resp.json();
+
+            if (
+              resp.ok &&
+              data.results &&
+              data.results[0].status === "success"
+            ) {
+              bar.style.width = "100%";
+              bar.style.background = "#27ae60";
+              item.classList.add("success");
+              status.textContent = "Success";
+              ok++;
+            } else {
+              throw new Error(
+                (data.results && data.results[0].error) ||
+                  data.error ||
+                  "Upload failed",
+              );
+            }
+          } catch (err) {
+            clearInterval(ticker);
+            bar.style.width = "100%";
+            bar.style.background = "#e74c3c";
+            item.classList.add("failed");
+            status.textContent = "Failed: " + err.message;
+            fail++;
+          }
+
+          updateStats(ok, total - ok - fail, fail, total);
+        }
+
+        // Re-enable
+        uploadBtn.disabled = false;
+        clearBtn.disabled = false;
+        uploadBtn.innerHTML =
+          '<i class="fas fa-cloud-upload-alt"></i> Start Upload';
+
+        // Result + redirect
+        if (ok === total) {
+          showMsg(ok + " document(s) uploaded successfully!", "success");
+          setTimeout(function () {
+            window.location.href = DOCS_URL;
+          }, 2000);
+        } else if (ok > 0) {
+          showMsg(ok + " uploaded, " + fail + " failed.", "info");
+          setTimeout(function () {
+            window.location.href = DOCS_URL;
+          }, 3000);
+        } else {
+          showMsg("All uploads failed. Please try again.", "error");
+        }
+      }
+
+      // ── Stats counters ────────────────────────────────────────────────
+      function updateStats(s, p, f, t) {
+        document.getElementById("successCount").textContent = s;
+        document.getElementById("progressCountText").textContent = p;
+        document.getElementById("failedCount").textContent = f;
+        document.getElementById("progressCount").textContent =
+          s + f + " of " + t + " files processed";
+      }
+      function resetStats() {
+        updateStats(0, 0, 0, 0);
+      }
+
+      // ── CSRF token ────────────────────────────────────────────────────
+      function getCSRF() {
+        // Try cookie first
+        var cookies = document.cookie.split(";");
+        for (var i = 0; i < cookies.length; i++) {
+          var c = cookies[i].trim();
+          if (c.startsWith("csrftoken=")) {
+            return decodeURIComponent(c.substring("csrftoken=".length));
+          }
+        }
+        // Fallback: hidden input rendered by {% csrf_token %}
+        var el = document.querySelector("[name=csrfmiddlewaretoken]");
+        return el ? el.value : "";
+      }
+
+      // ── Format bytes ──────────────────────────────────────────────────
+      function fmtSize(b) {
+        if (b < 1024) return b + " B";
+        if (b < 1024 * 1024) return (b / 1024).toFixed(1) + " KB";
+        return (b / (1024 * 1024)).toFixed(1) + " MB";
+      }
+
+      // ── Toast message ─────────────────────────────────────────────────
+      function showMsg(text, type) {
+        var existing = document.querySelector(".upload-toast");
+        if (existing) existing.remove();
+        var colors = { success: "#27ae60", error: "#e74c3c", info: "#3498db" };
+        var el = document.createElement("div");
+        el.className = "upload-toast";
+        el.style.cssText =
+          "position:fixed;top:20px;right:20px;z-index:9999;padding:14px 22px;" +
+          "border-radius:8px;color:#fff;font-size:14px;font-weight:600;" +
+          "box-shadow:0 4px 12px rgba(0,0,0,.15);" +
+          "background:" +
+          (colors[type] || colors.info) +
+          ";" +
+          "animation:_toastIn .3s ease;";
+        el.textContent = text;
+        document.body.appendChild(el);
+        setTimeout(function () {
+          el.style.opacity = "0";
+          el.style.transition = "opacity .4s";
+          setTimeout(function () {
+            if (el.parentNode) el.remove();
+          }, 400);
+        }, 4000);
+      }
+
+      // Toast keyframe
+      (function () {
+        var s = document.createElement("style");
+        s.textContent =
+          "@keyframes _toastIn{from{transform:translateX(110%);opacity:0}" +
+          "to{transform:translateX(0);opacity:1}}";
+        document.head.appendChild(s);
+      })();
+    </script>
   </body>
 </html>

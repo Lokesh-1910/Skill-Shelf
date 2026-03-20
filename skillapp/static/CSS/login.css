@@ -50,6 +50,7 @@ label {
 }
 
 input[type="text"],
+input[type="email"],
 input[type="password"] {
     width: 100%;
     padding: 10px;
@@ -151,4 +152,21 @@ input[type="password"] {
 .register a {
     color: #2d8cf0;
     text-decoration: none;
+}
+
+/* Flash messages (success / error) */
+.msg {
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 14px;
+    margin-bottom: 16px;
+    font-weight: 500;
+}
+.msg-error {
+    background: #fee2e2;
+    color: #dc2626;
+}
+.msg-success {
+    background: #d1fae5;
+    color: #065f46;
 }

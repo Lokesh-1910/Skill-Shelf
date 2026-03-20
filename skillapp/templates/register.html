@@ -1,74 +1,84 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Skill Shelf - Sign Up</title>
     <link rel="stylesheet" href="{% static 'CSS/register.css' %}">
 </head>
-
 <body>
-    <div class="about">
-        <div class="about1">
-            <h1 class="head1">Create Your Skill Shelf Account</h1><br><br>
-            
-            <form class="form1" action="">
-                <label for="name">Full Name</label>
-                <input type="text" id="name" placeholder="John Doe">
-                <label for="email">Email Address</label>
-                <input type="email" id="email" placeholder="john.doe@example.com"><br>
-                <label for="password">Password</label>
-                <input type="password" id="password" placeholder="Enter your password"><br>
 
-                <label for="confirm">Confirm Password</label>
-                <input type="password" id="confirm" placeholder="Confirm your password"><br>
+<div class="about">
+    <div class="about1">
+        <h1 class="head1">Create Your Skill Shelf Account</h1>
 
-                <label for="student">Student ID (Optional)</label>
-                <input type="text" id="student" placeholder="S12345678">
-                <div class="box">
-                    <input type="checkbox" id="terms">
-                    <label class="terms1" for="terms">I accept the <a href="../HTML/terms.html">terms and conditions</a></label>
-                </div>
-                <button type="submit">Sign Up</button>
-                <p class="login-link">
-                    Already have an account?
-                    <a href="/login/">Log in</a>
-                </p>
-            </form>
-            <hr>
-            <div class="home">
-                <h3>Why Skill Shelf?</h3>
+        {% for message in messages %}
+            <p class="msg {% if message.tags == 'error' %}msg-error{% else %}msg-success{% endif %}">
+                {{ message }}
+            </p>
+        {% endfor %}
 
-                <div class="feature">
-                    <span>✔</span>
-                    <p>
-                        <strong>Secure Document Storage:</strong>
-                        Keep all your academic records safe and sound.
-                    </p>
-                </div>
-                <div class="feature">
-                    <span>✔</span>
-                    <p>
-                        <strong>Easy Organization:</strong>
-                        Categorize and find documents with ease.
-                    </p>
-                </div>
+        <form method="POST" action="{% url 'register' %}">
+            {% csrf_token %}
 
-                <div class="feature">
-                    <span>✔</span>
-                    <p>
-                        <strong>Anytime, Anywhere Access:</strong>
-                        Retrieve your documents from any device.
-                    </p>
-                </div>
+            <label for="name">Full Name</label>
+            <input type="text" id="name" name="name"
+                   placeholder="John Doe"
+                   value="{{ request.POST.name }}" required>
 
+            <label for="email">Email Address</label>
+            <input type="email" id="email" name="email"
+                   placeholder="john.doe@example.com"
+                   value="{{ request.POST.email }}" required>
+
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password"
+                   placeholder="Minimum 8 characters" required>
+
+            <label for="confirm">Confirm Password</label>
+            <input type="password" id="confirm" name="confirm"
+                   placeholder="Confirm your password" required>
+
+            <label for="student">Student ID (Optional)</label>
+            <input type="text" id="student" name="student"
+                   placeholder="S12345678"
+                   value="{{ request.POST.student }}">
+
+            <div class="box">
+                <input type="checkbox" id="terms" required>
+                <label class="terms1" for="terms">
+                    I accept the <a href="#">terms and conditions</a>
+                </label>
             </div>
-            
+
+            <button type="submit">Sign Up</button>
+
+            <p class="login-link">
+                Already have an account? <a href="{% url 'login' %}">Log in</a>
+            </p>
+        </form>
+
+        <hr>
+
+        <div class="home">
+            <h3>Why Skill Shelf?</h3>
+            <div class="feature">
+                <span>✔</span>
+                <p><strong>Secure Document Storage:</strong> Keep all your academic records safe and sound.</p>
+            </div>
+            <div class="feature">
+                <span>✔</span>
+                <p><strong>Easy Organization:</strong> Categorize and find documents with ease.</p>
+            </div>
+            <div class="feature">
+                <span>✔</span>
+                <p><strong>Anytime, Anywhere Access:</strong> Retrieve your documents from any device.</p>
+            </div>
         </div>
+
     </div>
+</div>
 
 </body>
-
 </html>
