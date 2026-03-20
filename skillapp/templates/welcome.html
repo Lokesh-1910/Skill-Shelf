@@ -1,0 +1,153 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skill Shelf - Welcome</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="{% static 'CSS/base.css' %}">
+    <link rel="stylesheet" href="{% static 'CSS/welcome.css' %}">
+</head>
+
+<body>
+    <header>
+        <div class="home">
+            <i class="fa-solid fa-hexagon"></i>
+            <span>Skill Shelf</span>
+        </div>
+        <div class="about">
+            <a href="/login/">Login</a>
+            <a href="/register/" class="reg">Register</a>
+        </div>
+    </header>
+    
+    <section class="hero-section">
+        <div class="hero-content">
+            <h1>Your Academic Journey, Securely Stored</h1>
+            <p>
+                Skill Shelf is a centralized, secure platform for students to manage
+                marksheets, grades, certifications, and identity proofs effortlessly.
+            </p>
+            <div class="hero-buttons">
+                <a href="/upload/" class="login-btn">Login to Skill Shelf</a>
+                <a href="/register/" class="create-btn">Create Account</a>
+            </div>
+        </div>
+
+        <div class="hero-slideshow">
+            <!-- Slideshow container -->
+            <div class="slideshow-container">
+                <div class="slide fade">
+                    <img src="../Assets/Main.png" alt="Academic Illustration 1">
+                </div>
+                <div class="slide fade">
+                    <img src="../Assets/Img1.png" alt="Academic Illustration 2">
+                </div>
+                <!-- Next and previous buttons -->
+                <a class="prev" onclick="plusSlides(-1)">&#10094;</a>
+                <a class="next" onclick="plusSlides(1)">&#10095;</a>
+
+                <!-- Dots/circles -->
+                <div class="dots-container">
+                    <span class="dot" onclick="currentSlide(1)"></span>
+                    <span class="dot" onclick="currentSlide(2)"></span>
+                </div>
+            </div>
+        </div>
+    </section>
+    <section class="f">
+        <h2>Key Features for Every Student</h2>
+        <div class="f1">
+            <div class="card">
+                <i class="fa-solid fa-cloud-arrow-up"></i>
+                <h3>Upload & Organize</h3>
+                <p>
+                    Effortlessly upload all your academic records and categorize
+                    them for quick retrieval. Keep everything tidy and accessible.
+                </p>
+            </div>
+            <div class="card">
+                <i class="fa-solid fa-lock"></i>
+                <h3>Secure & Reliable Storage</h3>
+                <p>
+                    Your documents are protected with industry-leading encryption
+                    and robust security protocols. Peace of mind guaranteed.
+                </p>
+            </div>
+            <div class="card">
+                <i class="fa-solid fa-share-nodes"></i>
+                <h3>Seamless Sharing</h3>
+                <p>
+                    Share specific documents securely with institutions or
+                    potential employers, with full control over access permissions.
+                </p>
+            </div>
+        </div>
+    </section>
+    
+    <footer>
+        <div class="ft">
+            <div class="fl">
+                <strong>⬡ Skill Shelf</strong>
+                <p>Your secure shelf for academic records.</p>
+            </div>
+            <div class="fl1">
+                <h4>Company</h4>
+                <a href="#">About Us</a>
+                <a href="#">Contact</a>
+                <a href="#">Careers</a>
+            </div>
+            <div class="fl1">
+                <h4>Support</h4>
+                <a href="#">Help Center</a>
+                <a href="#">FAQ</a>
+                <a href="#">Privacy Policy</a>
+                <a href="#">Terms of Service</a>
+            </div>
+        </div>
+        <div class="fb">
+            © 2026 Skill Shelf. All rights reserved.
+        </div>
+    </footer>
+
+    <script>
+        let slideIndex = 1;
+        showSlides(slideIndex);
+
+        function plusSlides(n) {
+            showSlides(slideIndex += n);
+        }
+
+        function currentSlide(n) {
+            showSlides(slideIndex = n);
+        }
+
+        function showSlides(n) {
+            let i;
+            let slides = document.getElementsByClassName("slide");
+            let dots = document.getElementsByClassName("dot");
+            
+            if (n > slides.length) { slideIndex = 1 }
+            if (n < 1) { slideIndex = slides.length }
+            
+            for (i = 0; i < slides.length; i++) {
+                slides[i].style.display = "none";
+            }
+            
+            for (i = 0; i < dots.length; i++) {
+                dots[i].className = dots[i].className.replace(" active-dot", "");
+            }
+            
+            slides[slideIndex - 1].style.display = "block";
+            dots[slideIndex - 1].className += " active-dot";
+        }
+
+        // Auto slide change every 5 seconds
+        setInterval(function() {
+            plusSlides(1);
+        }, 5000);
+    </script>
+</body>
+</html>

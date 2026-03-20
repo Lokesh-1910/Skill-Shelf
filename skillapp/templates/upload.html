@@ -1,0 +1,196 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Upload Documents - Skill Shelf</title>
+    <link rel="stylesheet" href="{% static 'CSS/base.css' %}" />
+    <link rel="stylesheet" href="{% static 'CSS/upload.css' %}" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  </head>
+  <body>
+    {% include 'partials/header.html' %}
+
+    <!-- Main Content -->
+    <main class="upload-page">
+      <!-- Header -->
+      <header class="page-header">
+        <h1><i class="fas fa-upload"></i> Upload Documents</h1>
+        <p>Add new documents to your Skill Shelf library</p>
+      </header>
+
+      <!-- Upload Steps -->
+      <section class="upload-steps">
+        <h2><i class="fas fa-info-circle"></i> How to Upload Documents</h2>
+        <div class="steps">
+          <div class="step">
+            <i class="fas fa-file-import"></i>
+            <h3>1. Select Files</h3>
+            <p>Drag & drop files or click browse to select documents</p>
+          </div>
+          <div class="step">
+            <i class="fas fa-tags"></i>
+            <h3>2. Add Details</h3>
+            <p>Choose document type, add tags, and description</p>
+          </div>
+          <div class="step">
+            <i class="fas fa-cloud-upload-alt"></i>
+            <h3>3. Upload</h3>
+            <p>Documents are securely stored in your library</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Upload Form -->
+      <div class="upload-form">
+        <!-- Left Side: File Selection & Details -->
+        <div class="upload-left">
+          <!-- Step 1: File Selection -->
+          <section class="upload-section">
+            <h3><i class="fas fa-file"></i> Step 1: Select Your Files</h3>
+            <div class="file-drop-area" id="dropZone">
+              <i class="fas fa-cloud-upload-alt"></i>
+              <h4>Drag & Drop Your Files Here</h4>
+              <p>or click to browse</p>
+              <button class="browse-btn" id="browseBtn">
+                <i class="fas fa-folder-open"></i> Browse Files
+              </button>
+              <p class="file-types">
+                Supports: PDF, DOCX, JPG, PNG, ZIP (Max 10MB each)
+              </p>
+              <input
+                type="file"
+                id="fileInput"
+                multiple
+                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.zip"
+                hidden
+              />
+            </div>
+
+            <!-- Selected Files -->
+            <div class="selected-files">
+              <h4>Selected Files (<span id="fileCount">0</span>)</h4>
+              <div class="file-list" id="fileList">
+                <div class="no-files">
+                  <i class="fas fa-file"></i>
+                  <p>No files selected yet</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Step 2: Document Details -->
+          <section class="upload-section">
+            <h3><i class="fas fa-edit"></i> Step 2: Document Details</h3>
+
+            <div class="form-group">
+              <label><i class="fas fa-tag"></i> Document Type</label>
+              <select id="docType">
+                <option value="">Select Document Type</option>
+                <option value="academic">Academic</option>
+                <option value="certificate">Certificate</option>
+                <option value="id">ID Document</option>
+                <option value="marksheet">Marksheet</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label><i class="fas fa-hashtag"></i> Tags</label>
+              <input
+                type="text"
+                id="tags"
+                placeholder="Type tags and press Enter..."
+              />
+              <small>Separate multiple tags with commas</small>
+            </div>
+
+            <div class="form-group">
+              <label><i class="fas fa-align-left"></i> Description</label>
+              <textarea
+                id="description"
+                placeholder="Add notes or descriptions..."
+              ></textarea>
+            </div>
+          </section>
+        </div>
+
+        <!-- Right Side: Upload Progress -->
+        <div class="upload-right">
+          <section class="upload-section">
+            <h3><i class="fas fa-chart-line"></i> Step 3: Upload Progress</h3>
+
+            <!-- Upload Status -->
+            <div class="upload-status">
+              <div class="status-header">
+                <h4>Upload Status</h4>
+                <span id="progressCount">0 of 0 files processed</span>
+              </div>
+
+              <div class="status-stats">
+                <div class="stat success">
+                  <i class="fas fa-check-circle"></i>
+                  <span>Successful: <strong id="successCount">0</strong></span>
+                </div>
+                <div class="stat progress">
+                  <i class="fas fa-spinner"></i>
+                  <span
+                    >In Progress:
+                    <strong id="progressCountText">0</strong></span
+                  >
+                </div>
+                <div class="stat failed">
+                  <i class="fas fa-times-circle"></i>
+                  <span>Failed: <strong id="failedCount">0</strong></span>
+                </div>
+              </div>
+
+              <!-- Upload Queue -->
+              <div class="upload-queue" id="uploadQueue">
+                <div class="no-uploads">
+                  <i class="fas fa-upload"></i>
+                  <p>No uploads in progress</p>
+                  <small>Selected files will appear here</small>
+                </div>
+              </div>
+
+              <!-- Upload Actions -->
+              <div class="upload-actions">
+                <button class="btn clear-btn" id="clearBtn">
+                  <i class="fas fa-trash"></i> Clear Selection
+                </button>
+                <button class="btn upload-btn" id="uploadBtn">
+                  <i class="fas fa-cloud-upload-alt"></i> Start Upload
+                </button>
+              </div>
+            </div>
+
+            <!-- Storage Info -->
+            <div class="storage-info">
+              <h4><i class="fas fa-database"></i> Storage Information</h4>
+              <div class="storage-bar">
+                <div class="storage-fill" style="width: 60%"></div>
+              </div>
+              <p>1.2 GB used of 2 GB <span>40% free space</span></p>
+            </div>
+
+            <!-- Upload Tips -->
+            <div class="upload-tips">
+              <h4><i class="fas fa-lightbulb"></i> Upload Tips</h4>
+              <ul>
+                <li>Keep file names descriptive</li>
+                <li>Add relevant tags to categorize</li>
+                <li>Max file size: 10MB per document</li>
+                <li>Upload multiple files at once</li>
+              </ul>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+
+    {% include 'partials/footer.html' %}
+
+    <script src="{% static 'JS/upload.js' %}"></script>
+  </body>
+</html>

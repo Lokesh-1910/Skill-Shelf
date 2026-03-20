@@ -1,0 +1,391 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile Management</title>
+    <link rel="stylesheet" href="{% static 'CSS/base.css' %}">
+    <link rel="stylesheet" href="{% static 'CSS/profile.css' %}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+</head>
+<body>
+    {% include 'partials/header.html' %}
+
+    <!-- MAIN CONTAINER -->
+    <main class="container">
+        <h1 class="page-title">Profile Management</h1>
+        <p class="page-subtitle">Manage your personal information and account security</p>
+        
+        <!-- SMALL PROFILE COMPLETION -->
+        <div class="completion-small">
+            <span class="completion-label-small">Profile Completion:</span>
+            <span class="completion-percent-small" id="completionPercent">0%</span>
+            <div class="progress-bar-small">
+                <div class="progress-fill-small" id="progressFill"></div>
+            </div>
+        </div>
+        
+        <!-- TABS -->
+        <div class="tabs-container">
+            <button class="tab active" onclick="switchTab('profile')">Profile</button>
+            <button class="tab" onclick="switchTab('security')">Security</button>
+            <button class="tab" onclick="switchTab('settings')">Settings</button>
+        </div>
+        
+        <!-- PROFILE TAB -->
+        <section id="profileTab" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h2 class="card-title">Personal Information</h2>
+                        <p class="card-subtitle">Update your basic profile details</p>
+                    </div>
+                </div>
+                
+                <!-- PROFILE HEADER -->
+                <div class="profile-header">
+                    <div class="avatar-container">
+                        <div class="profile-avatar" id="profileAvatar">JD</div>
+                        <div class="avatar-overlay" onclick="document.getElementById('photoInput').click()">
+                            📷
+                        </div>
+                        <input type="file" id="photoInput" accept="image/*" hidden onchange="updateProfilePhoto(event)">
+                    </div>
+                    <div class="profile-info">
+                        <h2 id="displayName">Indhumathi S</h2>
+                        <p class="profile-role">Premium Member</p>
+                        <p class="profile-bio" id="displayBio">Welcome to your unified digital profile.</p>
+                    </div>
+                </div>
+                
+                <!-- BASIC INFORMATION FORM -->
+                <div class="form-section">
+                    <h3 class="section-title">Basic Information</h3>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">
+                                Full Name <span class="required">*</span>
+                            </label>
+                            <input type="text" class="form-control track" placeholder="Enter your full name" id="fullName">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">
+                                Email Address <span class="required">*</span>
+                            </label>
+                            <input type="email" class="form-control track" placeholder="your.email@example.com" id="email">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">
+                                Phone Number <span class="required">*</span>
+                            </label>
+                            <input type="tel" class="form-control track" placeholder="+91 98765 43210" id="phone">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Gender</label>
+                            <select class="form-control track" id="gender">
+                                <option value="">Select Gender</option>
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
+                                <option value="other">Other</option>
+                                <option value="prefer-not-to-say">Prefer not to say</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Date of Birth</label>
+                            <input type="date" class="form-control track" id="dob">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Nationality</label>
+                            <input type="text" class="form-control track" placeholder="Your nationality" id="nationality">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group full-width">
+                        <label class="form-label">Address</label>
+                        <textarea class="form-control track" placeholder="Enter your full address..." rows="2" id="address"></textarea>
+                    </div>
+                    
+                    <div class="form-group full-width">
+                        <label class="form-label">Bio</label>
+                        <textarea class="form-control track" placeholder="Tell us about yourself..." rows="3" id="bio"></textarea>
+                    </div>
+                </div>
+                
+                <!-- ACTION BUTTONS -->
+                <div class="action-buttons">
+                    <button class="btn btn-primary" onclick="saveProfile()">
+                        Save Changes
+                    </button>
+                    <button class="btn btn-secondary" onclick="resetForm()">
+                        Reset
+                    </button>
+                </div>
+            </div>
+        </section>
+        
+        <!-- SECURITY TAB -->
+        <section id="securityTab" class="tab-content hidden">
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h2 class="card-title">Account Security</h2>
+                        <p class="card-subtitle">Manage your password and security settings</p>
+                    </div>
+                </div>
+                
+                <!-- PASSWORD CHANGE SECTION -->
+                <div class="form-section">
+                    <h3 class="section-title">Change Password</h3>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Current Password</label>
+                            <input type="password" class="form-control" placeholder="Enter current password" id="currentPassword">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">New Password</label>
+                            <input type="password" class="form-control" placeholder="Minimum 8 characters" 
+                                   id="newPassword" oninput="checkPasswordStrength(this.value)">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Confirm New Password</label>
+                            <input type="password" class="form-control" placeholder="Re-enter new password" 
+                                   id="confirmPassword" oninput="validatePasswordMatch()">
+                        </div>
+                    </div>
+                    
+                    <!-- PASSWORD STRENGTH -->
+                    <div class="password-strength">
+                        <div class="strength-bar">
+                            <div class="strength-fill" id="strengthFill"></div>
+                        </div>
+                        <p class="strength-text" id="strengthText">Enter a password to check strength</p>
+                    </div>
+                    
+                    <!-- PASSWORD REQUIREMENTS -->
+                    <div class="form-group full-width" style="margin-top: 20px;">
+                        <div class="card-subtitle" style="margin-bottom: 12px;">Password must contain:</div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span id="reqLength" class="text-danger">●</span>
+                                <span style="font-size: 13px;">At least 8 characters</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span id="reqUpper" class="text-danger">●</span>
+                                <span style="font-size: 13px;">One uppercase letter</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span id="reqLower" class="text-danger">●</span>
+                                <span style="font-size: 13px;">One lowercase letter</span>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span id="reqNumber" class="text-danger">●</span>
+                                <span style="font-size: 13px;">One number</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="action-buttons" style="margin-top: 30px;">
+                        <button class="btn btn-primary" onclick="updatePassword()">
+                            Update Password
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- TWO-FACTOR AUTHENTICATION -->
+                <div class="form-section">
+                    <h3 class="section-title">Two-Factor Authentication</h3>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Enable 2FA</label>
+                            <div style="display: flex; align-items: center; gap: 12px; margin-top: 8px;">
+                                <label class="switch">
+                                    <input type="checkbox" id="twoFactorToggle">
+                                    <span class="slider"></span>
+                                </label>
+                                <span id="twoFactorStatus">Disabled</span>
+                            </div>
+                            <p class="card-subtitle" style="margin-top: 8px;">
+                                Add an extra layer of security to your account
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <!-- 2FA SETUP (Hidden by default) -->
+                    <div id="twoFactorSetup" class="hidden" style="margin-top: 24px; padding: 20px; background: #f9fafb; border-radius: 12px;">
+                        <h4 style="margin-bottom: 16px; color: #374151;">Setup Two-Factor Authentication</h4>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Phone Number for OTP</label>
+                                <div style="display: flex; gap: 12px;">
+                                    <input type="tel" class="form-control" placeholder="Enter phone number" 
+                                           id="twoFactorPhone" value="">
+                                    <button class="btn btn-outline" onclick="send2FAOTP()">Send OTP</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="twoFactorOTPBox" class="otp-box hidden">
+                            <div class="otp-input-group">
+                                <input type="text" maxlength="1" class="otp-input" oninput="moveToNext2FA(this, 1)">
+                                <input type="text" maxlength="1" class="otp-input" oninput="moveToNext2FA(this, 2)">
+                                <input type="text" maxlength="1" class="otp-input" oninput="moveToNext2FA(this, 3)">
+                                <input type="text" maxlength="1" class="otp-input" oninput="moveToNext2FA(this, 4)">
+                                <input type="text" maxlength="1" class="otp-input" oninput="moveToNext2FA(this, 5)">
+                                <input type="text" maxlength="1" class="otp-input" oninput="moveToNext2FA(this, 6)">
+                            </div>
+                            <button class="btn btn-primary" onclick="verify2FAOTP()" style="margin-top: 16px;">Verify & Enable</button>
+                            <p id="twoFactorOTPStatus" class="otp-status"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- SETTINGS TAB -->
+        <section id="settingsTab" class="tab-content hidden">
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h2 class="card-title">Settings</h2>
+                        <p class="card-subtitle">Customize your application preferences</p>
+                    </div>
+                </div>
+                
+                <!-- APPEARANCE SETTINGS -->
+                <div class="form-section">
+                    <h3 class="section-title">Appearance</h3>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Theme</label>
+                            <div style="display: flex; align-items: center; gap: 12px; margin-top: 8px;">
+                                <label class="switch">
+                                    <input type="checkbox" id="darkModeToggle">
+                                    <span class="slider"></span>
+                                </label>
+                                <span id="themeStatus">Light Mode</span>
+                            </div>
+                            <p class="card-subtitle" style="margin-top: 8px;">
+                                Switch between light and dark theme
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Language</label>
+                            <select class="form-control" id="language">
+                                <option value="en">English</option>
+                                <option value="es">Spanish</option>
+                                <option value="fr">French</option>
+                                <option value="de">German</option>
+                                <option value="hi">Hindi</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Timezone</label>
+                            <select class="form-control" id="timezone">
+                                <option value="UTC">UTC</option>
+                                <option value="IST">IST (India)</option>
+                                <option value="EST">EST</option>
+                                <option value="PST">PST</option>
+                                <option value="GMT">GMT</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- NOTIFICATION SETTINGS -->
+                <div class="form-section">
+                    <h3 class="section-title">Notifications</h3>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 16px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="font-weight: 500; color: #374151;">Email Notifications</div>
+                                <div style="font-size: 13px; color: #6b7280;">Receive updates via email</div>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="emailNotifications" checked>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="font-weight: 500; color: #374151;">Push Notifications</div>
+                                <div style="font-size: 13px; color: #6b7280;">Receive browser notifications</div>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="pushNotifications" checked>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <div style="font-weight: 500; color: #374151;">SMS Notifications</div>
+                                <div style="font-size: 13px; color: #6b7280;">Receive updates via SMS</div>
+                            </div>
+                            <label class="switch">
+                                <input type="checkbox" id="smsNotifications">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- ACCOUNT ACTIONS -->
+                <div class="form-section">
+                    <h3 class="section-title">Account Actions</h3>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <button class="btn btn-secondary" onclick="exportData()" style="justify-content: flex-start;">
+                            📥 Export My Data
+                        </button>
+                        
+                        <button class="btn btn-secondary" onclick="downloadData()" style="justify-content: flex-start;">
+                            ⬇️ Download Backup
+                        </button>
+                        
+                        <button class="btn btn-secondary" onclick="deleteAccount()" style="justify-content: flex-start; color: #dc2626;">
+                            🗑️ Delete Account
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- LOGOUT SECTION -->
+                <div class="action-buttons" style="border-top: 1px solid #e5e7eb; padding-top: 24px;">
+                    <button class="btn btn-primary" onclick="logoutAllDevices()">
+                        Logout from All Devices
+                    </button>
+                    <button class="btn" onclick="logout()" style="background: #fee2e2; color: #dc2626;">
+                        Logout
+                    </button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    {% include 'partials/footer.html' %}
+
+    <!-- TOAST CONTAINER -->
+    <div id="toastContainer" style="position: fixed; top: 20px; right: 20px; z-index: 1000;"></div>
+
+    <script src="{% static 'JS/profile.js' %}"></script>
+</body>
+</html>

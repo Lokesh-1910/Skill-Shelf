@@ -1,0 +1,43 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Skill Shelf - Login</title>
+    <link rel="stylesheet" href="{% static 'CSS/login.css' %}">
+</head>
+<body>
+
+<div class="page">
+    <div class="login-card">
+
+        <h1 id="head1">Welcome Back!</h1><br>
+
+        <form>
+            <label>Email or Username</label>
+            <input type="text" placeholder="john.doe@example.com">
+
+            <label>Password</label>
+            <input type="password" placeholder="••••••••">
+
+            <div class="options">
+                <label class="remember">
+                    <input type="checkbox">
+                    Remember me
+                </label>
+                <a href="#" class="forgot">Forgot password?</a>
+            </div>
+
+            <button class="login-btn">Login</button><br><br>
+
+            <p class="register">
+                Don't have an account?
+                <a href="/register/">Register</a>
+            </p>
+        </form>
+
+    </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,390 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Segoe UI", Arial, sans-serif;
+}
+
+body {
+    background: #ffffff;
+    color: #111827;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 60px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.home {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 20px;
+    font-weight: bold;
+    color: #2563eb;
+}
+
+.home i {
+    font-size: 22px;
+}
+
+.about a {
+    margin-left: 20px;
+    text-decoration: none;
+    font-size: 14px;
+    color: #2563eb;
+}
+
+.reg {
+    padding: 8px 16px;
+    background: #2563eb;
+    color: #ffffff !important;
+    border-radius: 6px;
+    font-weight: 600;
+}
+
+/* HERO SECTION WITH SLIDESHOW */
+.hero-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 70px 60px;
+    gap: 40px;
+}
+
+.hero-content {
+    max-width: 500px;
+    flex: 1;
+}
+
+.hero-content h1 {
+    font-size: 42px;
+    font-weight: 800;
+    line-height: 1.2;
+    margin-bottom: 15px;
+    color: #111827;
+}
+
+.hero-content p {
+    font-size: 15px;
+    color: #6b7280;
+    line-height: 1.6;
+    margin-bottom: 30px;
+}
+
+.hero-buttons {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.login-btn,
+.create-btn {
+    padding: 12px 24px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
+    display: inline-block;
+    transition: all 0.3s ease;
+}
+
+.login-btn {
+    background: #2563eb;
+    color: #ffffff;
+    border: none;
+}
+
+.login-btn:hover {
+    background: #1d4ed8;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.create-btn {
+    border: 1px solid #2563eb;
+    color: #2563eb;
+    background: transparent;
+}
+
+.create-btn:hover {
+    background: #f0f7ff;
+    transform: translateY(-2px);
+}
+
+/* SLIDESHOW STYLES */
+.hero-slideshow {
+    flex: 1;
+    max-width: 550px;
+}
+
+.slideshow-container {
+    position: relative;
+    max-width: 100%;
+    margin: auto;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+.slide {
+    display: none;
+    width: 100%;
+}
+
+.slide img {
+    width: 100%;
+    height: 400px;
+    object-fit: cover;
+    border-radius: 12px;
+}
+
+/* Next & previous buttons */
+.prev,
+.next {
+    cursor: pointer;
+    position: absolute;
+    top: 50%;
+    width: auto;
+    padding: 16px;
+    margin-top: -22px;
+    color: white;
+    font-weight: bold;
+    font-size: 18px;
+    transition: 0.6s ease;
+    border-radius: 0 3px 3px 0;
+    user-select: none;
+    background-color: rgba(0, 0, 0, 0.3);
+}
+
+.next {
+    right: 0;
+    border-radius: 3px 0 0 3px;
+}
+
+.prev:hover,
+.next:hover {
+    background-color: rgba(0, 0, 0, 0.8);
+}
+
+/* Dots/bullets/indicators */
+.dots-container {
+    text-align: center;
+    padding: 15px;
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+}
+
+.dot {
+    cursor: pointer;
+    height: 12px;
+    width: 12px;
+    margin: 0 5px;
+    background-color: rgba(255, 255, 255, 0.5);
+    border-radius: 50%;
+    display: inline-block;
+    transition: background-color 0.6s ease;
+}
+
+.active-dot,
+.dot:hover {
+    background-color: white;
+}
+
+/* Fade animation */
+.fade {
+    animation-name: fade;
+    animation-duration: 1.5s;
+}
+
+@keyframes fade {
+    from {
+        opacity: .4
+    }
+
+    to {
+        opacity: 1
+    }
+}
+
+/* Features Section */
+.f {
+    background: #f9fafb;
+    padding: 70px 60px;
+    text-align: center;
+}
+
+.f h2 {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 50px;
+    color: #111827;
+}
+
+.f1 {
+    display: flex;
+    justify-content: space-between;
+    gap: 25px;
+}
+
+.card {
+    background: #ffffff;
+    padding: 30px 25px;
+    border-radius: 10px;
+    width: 100%;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    transition: transform 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+}
+
+.card h3 {
+    font-size: 18px;
+    margin-bottom: 12px;
+    color: #111827;
+}
+
+.card p {
+    font-size: 14px;
+    color: #6b7280;
+    line-height: 1.5;
+}
+
+.card i {
+    font-size: 36px;
+    color: #2563eb;
+    margin-bottom: 15px;
+}
+
+/* Footer */
+footer {
+    background: #f3f4f6;
+    padding: 40px 60px 20px;
+}
+
+.ft {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 30px;
+}
+
+.fl {
+    max-width: 250px;
+}
+
+.fl strong {
+    font-size: 18px;
+    color: #2563eb;
+}
+
+.fl p {
+    font-size: 14px;
+    color: #6b7280;
+    margin-top: 10px;
+}
+
+.fl1 h4 {
+    font-size: 14px;
+    margin-bottom: 10px;
+    color: #111827;
+}
+
+.fl1 a {
+    display: block;
+    font-size: 14px;
+    color: #6b7280;
+    text-decoration: none;
+    margin-bottom: 6px;
+    transition: color 0.3s ease;
+}
+
+.fl1 a:hover {
+    color: #2563eb;
+}
+
+.fb {
+    text-align: center;
+    font-size: 13px;
+    color: #6b7280;
+    border-top: 1px solid #e5e7eb;
+    padding-top: 15px;
+}
+
+
+/* Responsive Design */
+@media (max-width: 992px) {
+    .hero-section {
+        flex-direction: column;
+        text-align: center;
+        padding: 50px 30px;
+    }
+
+    .hero-content {
+        max-width: 100%;
+    }
+
+    .hero-content h1 {
+        font-size: 36px;
+    }
+
+    .hero-buttons {
+        justify-content: center;
+    }
+
+    .hero-slideshow {
+        max-width: 100%;
+    }
+
+    .f1 {
+        flex-direction: column;
+    }
+
+    .ft {
+        flex-direction: column;
+        gap: 30px;
+    }
+
+    .fl,
+    .fl1 {
+        max-width: 100%;
+    }
+}
+
+@media (max-width: 576px) {
+    header {
+        padding: 18px 20px;
+    }
+
+    .hero-content h1 {
+        font-size: 28px;
+    }
+
+    .hero-buttons {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .login-btn,
+    .create-btn {
+        width: 100%;
+        text-align: center;
+    }
+
+    .slide img {
+        height: 300px;
+    }
+
+    .f {
+        padding: 50px 20px;
+    }
+
+    footer {
+        padding: 30px 20px 15px;
+    }
+}
