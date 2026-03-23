@@ -228,3 +228,27 @@ class Document(models.Model):
     @property
     def is_image(self):
         return self.file_type in ["jpg", "jpeg", "png"]
+
+
+import random
+from django.utils import timezone
+
+class OTPVerification(models.Model):
+    METHOD_CHOICES = [('email', 'Email'), ('mobile', 'Mobile')]
+
+    user       = models.ForeignKey(User, on_delete=models.CASCADE)
+    otp        = models.CharField(max_length=6)
+    method     = models.CharField(max_length=10, choices=METHOD_CHOICES)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_used    = models.BooleanField(default=False)
+
+    def is_expired(self):
+        # OTP expires after 5 minutes
+        return timezone.now() > self.created_at + timezone.timedelta(minutes=5)
+
+    @staticmethod
+    def generate_otp():
+        return str(random.randint(100000, 999999))
+
+    def __str__(self):
+        return f"{self.user.email} - {self.otp} - {self.method}"

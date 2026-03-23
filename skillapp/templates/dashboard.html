@@ -109,29 +109,6 @@
 
             <!-- Quick Stats & Actions -->
             <div class="quick-stats">
-                <div class="section-header">
-                    <h2>Quick Stats</h2>
-                </div>
-
-                <div class="stats-list">
-                    <div class="stat-item">
-                        <span class="stat-label">Total Documents</span>
-                        <span class="stat-value">{{ total_docs }}</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Storage Used</span>
-                        <span class="stat-value">{{ size_display }}</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Categories Used</span>
-                        <span class="stat-value">{{ categories_used }}</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Added This Week</span>
-                        <span class="stat-value">{{ recent_count }}</span>
-                    </div>
-                </div>
-
                 <div class="quick-actions-section">
                     <div class="section-header">
                         <h2>Quick Actions</h2>
@@ -156,6 +133,32 @@
                         <i class="fas fa-cloud-upload-alt"></i>
                         Quick Upload
                     </a>
+                </div><br>
+            </div>
+
+
+            <div class="quick-stats">
+                <div class="section-header">
+                    <h2>Quick Stats</h2>
+                </div>
+
+                <div class="stats-list">
+                    <div class="stat-item">
+                        <span class="stat-label">Total Documents</span>
+                        <span class="stat-value">{{ total_docs }}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Storage Used</span>
+                        <span class="stat-value">{{ size_display }}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Categories Used</span>
+                        <span class="stat-value">{{ categories_used }}</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Added This Week</span>
+                        <span class="stat-value">{{ recent_count }}</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -182,6 +185,7 @@
         </div>
 
     </main>
+
 
     {% include 'partials/footer.html' %}
 

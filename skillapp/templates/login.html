@@ -1,74 +1,428 @@
 {% load static %}
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Skill Shelf - Login</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Skill Shelf — Sign In</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="{% static 'CSS/login.css' %}" />
+  </head>
+  <body>
+    <div class="auth-page">
+      <!-- ── LEFT PANEL ── -->
+      <div class="left-panel">
+        <div class="left-inner">
+          <a href="/" class="brand">
+            <i class="fa-solid fa-hexagon"></i>
+            <span>Skill Shelf</span>
+          </a>
 
-    <!-- ── Prevent browser from caching this page ── -->
-    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
-    <meta http-equiv="Pragma" content="no-cache">
-    <meta http-equiv="Expires" content="0">
-
-    <link rel="stylesheet" href="{% static 'CSS/login.css' %}">
-</head>
-<body>
-
-<div class="page">
-    <div class="login-card">
-
-        <h1 id="head1">Welcome Back!</h1>
-
-        {% for message in messages %}
-            <p class="msg {% if message.tags == 'error' %}msg-error{% else %}msg-success{% endif %}">
-                {{ message }}
+          <div class="left-hero">
+            <h2>Your Academic<br />Records,<br />Secured.</h2>
+            <p>
+              Store, manage, and access all your documents with the power of AI
+              — anytime, anywhere.
             </p>
-        {% endfor %}
+          </div>
 
-        <form method="POST" action="{% url 'login' %}">
-            {% csrf_token %}
+          <div class="feature-pills">
+            <div class="pill"><i class="fas fa-robot"></i> AI Assistant</div>
+            <div class="pill">
+              <i class="fas fa-shield-halved"></i> OTP Login
+            </div>
+            <div class="pill"><i class="fas fa-cloud"></i> Cloud Storage</div>
+            <div class="pill"><i class="fas fa-lock"></i> Encrypted</div>
+          </div>
 
-            <!-- Preserve redirect target if Django set one -->
-            {% if next %}
-                <input type="hidden" name="next" value="{{ next }}">
-            {% endif %}
+          <div class="left-quote">
+            <p>
+              "Skill Shelf keeps all my academic records organized and
+              accessible whenever I need them."
+            </p>
+            <div class="quote-author">
+              <div class="quote-avatar">S</div>
+              <div class="quote-info">
+                <strong>Student User</strong>
+                <span>Verified Member</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-            <label for="email">Email Address</label>
-            <input type="email" id="email" name="email"
-                   placeholder="john.doe@example.com"
-                   value="{{ request.POST.email }}" required autofocus>
+      <!-- ── RIGHT PANEL ── -->
+      <div class="right-panel">
+        <div class="right-inner">
+          <div class="form-header">
+            <div class="form-logo">
+              <i class="fas fa-user-plus"></i>
+            </div>
+            <h1>Welcome Back</h1>
+            <p>Sign in to your Skill Shelf account</p>
+          </div>
 
-            <label for="password">Password</label>
-            <input type="password" id="password" name="password"
-                   placeholder="••••••••" required>
+          <!-- ── TABS ── -->
+          <div class="login-tabs">
+            <button class="tab-btn active" onclick="switchTab('password')">
+              <i class="fas fa-lock"></i> Password
+            </button>
+            <button class="tab-btn" onclick="switchTab('otp')">
+              <i class="fas fa-envelope-open-text"></i> Email OTP
+            </button>
+          </div>
 
-            <div class="options">
-                <label class="remember">
-                    <input type="checkbox" name="remember_me"> Remember me
-                </label>
-                <a href="#" class="forgot">Forgot password?</a>
+          <!-- ── PASSWORD LOGIN ── -->
+          <div id="tab-password">
+            <form method="POST" action="{% url 'login' %}">
+              {% csrf_token %} {% if messages %} {% for message in messages %}
+              <div
+                class="alert {% if message.tags == 'error' %}alert-error{% else %}alert-success{% endif %}"
+              >
+                <i
+                  class="fas {% if message.tags == 'error' %}fa-circle-exclamation{% else %}fa-circle-check{% endif %}"
+                ></i>
+                {{ message }}
+              </div>
+              {% endfor %} {% endif %}
+
+              <div class="field-group">
+                <label>Email Address</label>
+                <div class="input-box">
+                  <i class="fas fa-envelope input-icon"></i>
+                  <input
+                    type="email"
+                    name="email"
+                    placeholder="Enter your email"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div class="field-group">
+                <div class="label-row">
+                  <label>Password</label>
+                  <a href="#" class="forgot-link">Forgot password?</a>
+                </div>
+                <div class="input-box">
+                  <i class="fas fa-lock input-icon"></i>
+                  <input
+                    type="password"
+                    name="password"
+                    id="pw-field"
+                    placeholder="Enter your password"
+                    required
+                  />
+                  <button type="button" class="eye-btn" onclick="togglePw()">
+                    <i class="fas fa-eye" id="eye-icon"></i>
+                  </button>
+                </div>
+              </div>
+
+              <button type="submit" class="submit-btn">
+                Sign In <i class="fas fa-arrow-right"></i>
+              </button>
+            </form>
+          </div>
+
+          <!-- ── OTP LOGIN (Email only) ── -->
+          <div id="tab-otp" style="display: none">
+            <!-- Step 1: Enter Email -->
+            <div id="step-1" class="step active">
+              <div class="otp-intro">
+                <div class="otp-intro-icon">
+                  <i class="fas fa-envelope"></i>
+                </div>
+                <p>
+                  We'll send a 6-digit OTP to your registered email address.
+                </p>
+              </div>
+
+              <div class="field-group">
+                <label>Email Address</label>
+                <div class="input-box">
+                  <i class="fas fa-envelope input-icon"></i>
+                  <input
+                    type="email"
+                    id="otp-email"
+                    placeholder="Enter your registered email"
+                  />
+                </div>
+              </div>
+
+              <div id="step1-msg" class="status-msg"></div>
+
+              <button class="submit-btn" onclick="requestOTP()">
+                Send OTP <i class="fas fa-paper-plane"></i>
+              </button>
             </div>
 
-            <button class="login-btn" type="submit">Login</button>
+            <!-- Step 2: Enter OTP -->
+            <div id="step-2" class="step">
+              <button class="back-link" onclick="goBack()">
+                <i class="fas fa-arrow-left"></i> Back
+              </button>
 
-            <p class="register">
-                Don't have an account? <a href="{% url 'register' %}">Register</a>
-            </p>
+              <div class="otp-sent-info">
+                <div class="otp-sent-icon">
+                  <i class="fas fa-envelope-open-text"></i>
+                </div>
+                <p>OTP sent to</p>
+                <strong id="otp-sent-to"></strong>
+                <span>Check your inbox (and spam folder)</span>
+              </div>
 
-        </form>
+              <div class="otp-boxes">
+                <input
+                  type="text"
+                  maxlength="1"
+                  class="otp-cell"
+                  id="d1"
+                  oninput="otpInput(this, null, 'd2')"
+                  onkeydown="otpBackspace(event, this, null, 'd2')"
+                />
+                <input
+                  type="text"
+                  maxlength="1"
+                  class="otp-cell"
+                  id="d2"
+                  oninput="otpInput(this, 'd1', 'd3')"
+                  onkeydown="otpBackspace(event, this, 'd1', 'd3')"
+                />
+                <input
+                  type="text"
+                  maxlength="1"
+                  class="otp-cell"
+                  id="d3"
+                  oninput="otpInput(this, 'd2', 'd4')"
+                  onkeydown="otpBackspace(event, this, 'd2', 'd4')"
+                />
+                <input
+                  type="text"
+                  maxlength="1"
+                  class="otp-cell"
+                  id="d4"
+                  oninput="otpInput(this, 'd3', 'd5')"
+                  onkeydown="otpBackspace(event, this, 'd3', 'd5')"
+                />
+                <input
+                  type="text"
+                  maxlength="1"
+                  class="otp-cell"
+                  id="d5"
+                  oninput="otpInput(this, 'd4', 'd6')"
+                  onkeydown="otpBackspace(event, this, 'd4', 'd6')"
+                />
+                <input
+                  type="text"
+                  maxlength="1"
+                  class="otp-cell"
+                  id="d6"
+                  oninput="otpInput(this, 'd5', null)"
+                  onkeydown="otpBackspace(event, this, 'd5', null)"
+                />
+              </div>
 
+              <div id="step2-msg" class="status-msg"></div>
+
+              <button class="submit-btn" onclick="verifyOTP()">
+                Verify &amp; Sign In <i class="fas fa-check-circle"></i>
+              </button>
+
+              <div class="resend-row">
+                Didn't receive it?
+                <button
+                  class="resend-btn"
+                  id="resend-btn"
+                  onclick="resendOTP()"
+                >
+                  Resend OTP
+                </button>
+                <span id="resend-timer"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-footer">
+            Don't have an account?
+            <a href="{% url 'register' %}">Create one free</a>
+          </div>
+        </div>
+      </div>
     </div>
-</div>
 
-<!-- ── If user lands here via back button after logout, redirect them away ── -->
-<script>
-    // Replace the current history entry so back button cannot return here
-    // after a successful login
-    if (window.history && window.history.replaceState) {
-        window.history.replaceState(null, '', window.location.href);
-    }
-</script>
+    <script>
+      let currentValue = "";
+      let resendInterval = null;
 
-</body>
+      // ── Tab switch ──
+      function switchTab(tab) {
+        document.querySelectorAll(".tab-btn").forEach((b, i) => {
+          b.classList.toggle(
+            "active",
+            (tab === "password" && i === 0) || (tab === "otp" && i === 1),
+          );
+        });
+        document.getElementById("tab-password").style.display =
+          tab === "password" ? "block" : "none";
+        document.getElementById("tab-otp").style.display =
+          tab === "otp" ? "block" : "none";
+      }
+
+      // ── Show/hide password ──
+      function togglePw() {
+        const f = document.getElementById("pw-field");
+        const i = document.getElementById("eye-icon");
+        const show = f.type === "password";
+        f.type = show ? "text" : "password";
+        i.className = show ? "fas fa-eye-slash" : "fas fa-eye";
+      }
+
+      // ── Request OTP ──
+      async function requestOTP() {
+        const value = document.getElementById("otp-email").value.trim();
+        if (!value) {
+          showMsg("step1-msg", "error", "Please enter your email address.");
+          return;
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+          showMsg("step1-msg", "error", "Please enter a valid email address.");
+          return;
+        }
+        currentValue = value;
+        showMsg("step1-msg", "loading", "Sending OTP to " + value + "...");
+
+        try {
+          const res = await fetch("/send-otp/", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ method: "email", value }),
+          });
+          const data = await res.json();
+          if (data.success) {
+            showMsg("step1-msg", "success", "OTP sent! Check your inbox.");
+            setTimeout(() => goToStep2(), 700);
+            startResendTimer();
+          } else {
+            showMsg("step1-msg", "error", data.error || "Failed to send OTP.");
+          }
+        } catch (e) {
+          showMsg("step1-msg", "error", "Network error. Please try again.");
+        }
+      }
+
+      // ── Verify OTP ──
+      async function verifyOTP() {
+        const otp = ["d1", "d2", "d3", "d4", "d5", "d6"]
+          .map((id) => document.getElementById(id).value)
+          .join("");
+        if (otp.length < 6) {
+          showMsg("step2-msg", "error", "Please enter all 6 digits.");
+          return;
+        }
+        showMsg("step2-msg", "loading", "Verifying...");
+        try {
+          const res = await fetch("/verify-otp/", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ method: "email", value: currentValue, otp }),
+          });
+          const data = await res.json();
+          if (data.success) {
+            showMsg("step2-msg", "success", "✓ Verified! Redirecting...");
+            setTimeout(() => (window.location.href = data.redirect), 600);
+          } else {
+            showMsg("step2-msg", "error", data.error || "Invalid OTP.");
+            // Shake the OTP boxes
+            document.querySelector(".otp-boxes").classList.add("shake");
+            setTimeout(
+              () =>
+                document.querySelector(".otp-boxes").classList.remove("shake"),
+              500,
+            );
+          }
+        } catch (e) {
+          showMsg("step2-msg", "error", "Network error. Please try again.");
+        }
+      }
+
+      // ── Resend ──
+      async function resendOTP() {
+        clearInterval(resendInterval);
+        clearOTPInputs();
+        showMsg("step2-msg", "", "");
+        await requestOTP();
+      }
+
+      // ── OTP cell input ──
+      function otpInput(el, prevId, nextId) {
+        el.value = el.value.replace(/[^0-9]/g, "");
+        el.classList.toggle("filled", el.value !== "");
+        if (el.value && nextId) document.getElementById(nextId)?.focus();
+      }
+
+      function otpBackspace(e, el, prevId, nextId) {
+        if (e.key === "Backspace" && !el.value && prevId) {
+          document.getElementById(prevId)?.focus();
+        }
+      }
+
+      // ── Step nav ──
+      function goToStep2() {
+        document.getElementById("step-1").classList.remove("active");
+        document.getElementById("step-2").classList.add("active");
+        document.getElementById("otp-sent-to").textContent = currentValue;
+        document.getElementById("d1").focus();
+      }
+
+      function goBack() {
+        document.getElementById("step-2").classList.remove("active");
+        document.getElementById("step-1").classList.add("active");
+        clearOTPInputs();
+        clearInterval(resendInterval);
+        showMsg("step2-msg", "", "");
+      }
+
+      function clearOTPInputs() {
+        ["d1", "d2", "d3", "d4", "d5", "d6"].forEach((id) => {
+          const el = document.getElementById(id);
+          el.value = "";
+          el.classList.remove("filled");
+        });
+      }
+
+      // ── Resend timer ──
+      function startResendTimer() {
+        const btn = document.getElementById("resend-btn");
+        const timer = document.getElementById("resend-timer");
+        let secs = 30;
+        btn.disabled = true;
+        timer.textContent = `(${secs}s)`;
+        resendInterval = setInterval(() => {
+          secs--;
+          timer.textContent = `(${secs}s)`;
+          if (secs <= 0) {
+            clearInterval(resendInterval);
+            btn.disabled = false;
+            timer.textContent = "";
+          }
+        }, 1000);
+      }
+
+      // ── Status message ──
+      function showMsg(id, type, text) {
+        const el = document.getElementById(id);
+        el.textContent = text;
+        el.className = "status-msg";
+        if (type) el.classList.add("status-" + type);
+      }
+    </script>
+  </body>
 </html>

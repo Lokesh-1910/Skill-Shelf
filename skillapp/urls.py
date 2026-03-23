@@ -19,4 +19,7 @@ urlpatterns = [
     path('upload/ajax/',views.upload_ajax_view,name='upload_ajax'),
     path('documents/<int:doc_id>/download/',views.document_download_view,name='document_download'),
     path('documents/<int:doc_id>/delete/',views.document_delete_view,name='document_delete'),
+    path('send-otp/',   views.send_otp_view,   name='send_otp'),
+path('verify-otp/', views.verify_otp_view, name='verify_otp'),
+path('resend-otp/', views.resend_otp_view, name='resend_otp'),
 ]

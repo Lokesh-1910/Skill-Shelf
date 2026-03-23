@@ -122,3 +122,19 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 AUTH_USER_MODEL = 'skillapp.User'
 MEDIA_URL  = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+
+# ── Email OTP (Gmail SMTP) ──
+EMAIL_BACKEND       = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST          = 'smtp.gmail.com'
+EMAIL_PORT          = 587
+EMAIL_USE_TLS       = True
+EMAIL_HOST_USER     = 'krishnakumardkris@gmail.com'      # your Gmail
+EMAIL_HOST_PASSWORD = 'ausduxoxcpkkcnxp'    # Gmail App Password (not your login password)
+DEFAULT_FROM_EMAIL  = 'Skill Shelf <krishnakumardkris@gmail.com>'
+
+import os
+
+TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
+TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
+TWILIO_PHONE_NUMBER = '+15005550006'

@@ -3,12 +3,17 @@ from django.contrib.auth import authenticate, login, logout, update_session_auth
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.views.decorators.cache import never_cache
+from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse, FileResponse, Http404
+import json
+import requests
 from django.db.models import Q, Count, Sum
 from django.utils import timezone
-from .models import User, Document
+from .models import User, Document,OTPVerification
 import os
 
+from django.core.mail import send_mail
+from django.conf import settings
 
 # ─────────────────────────────────────────────
 # HELPER
@@ -38,38 +43,144 @@ def page_view(request, page):
 # ─────────────────────────────────────────────
 # REGISTER
 # ─────────────────────────────────────────────
+# ─────────────────────────────────────────────
+# REGISTER — Step 1: collect details, send OTP
+# ─────────────────────────────────────────────
 
 def register_view(request):
     if request.method == "POST":
-        full_name  = request.POST.get("name", "").strip()
-        email      = request.POST.get("email", "").strip()
-        password   = request.POST.get("password", "")
-        confirm    = request.POST.get("confirm", "")
-        student_id = request.POST.get("student", "").strip()
+        action = request.POST.get("action")
 
-        if not full_name or not email or not password:
-            messages.error(request, "Full name, email and password are required.")
-            return render(request, "register.html")
-        if password != confirm:
-            messages.error(request, "Passwords do not match.")
-            return render(request, "register.html")
-        if len(password) < 8:
-            messages.error(request, "Password must be at least 8 characters.")
-            return render(request, "register.html")
-        if User.objects.filter(email=email).exists():
-            messages.error(request, "An account with this email already exists.")
-            return render(request, "register.html")
+        # ── STEP 1: Send OTP ──
+        if action == "send_otp":
+            full_name  = request.POST.get("name", "").strip()
+            email      = request.POST.get("email", "").strip()
+            password   = request.POST.get("password", "")
+            confirm    = request.POST.get("confirm", "")
+            student_id = request.POST.get("student", "").strip()
 
-        User.objects.create_user(
-            email=email, password=password,
-            full_name=full_name, student_id=student_id,
-        )
-        messages.success(request, "Account created! Please log in.")
-        return redirect("login")
+            # Validations
+            if not full_name or not email or not password:
+                messages.error(request, "Full name, email and password are required.")
+                return render(request, "register.html")
+            if password != confirm:
+                messages.error(request, "Passwords do not match.")
+                return render(request, "register.html")
+            if len(password) < 8:
+                messages.error(request, "Password must be at least 8 characters.")
+                return render(request, "register.html")
+            if User.objects.filter(email=email).exists():
+                messages.error(request, "An account with this email already exists.")
+                return render(request, "register.html")
+
+            # Store form data temporarily in session
+            request.session['pending_registration'] = {
+                'full_name':  full_name,
+                'email':      email,
+                'password':   password,
+                'student_id': student_id,
+            }
+
+            # Generate and send OTP
+            # Create a temp user object just for OTP
+            # (we use a dummy approach — store OTP in session)
+            import random
+            otp = str(random.randint(100000, 999999))
+            request.session['register_otp']    = otp
+            request.session['register_email']  = email
+
+            # Send OTP email
+            try:
+                send_mail(
+                    subject='Verify your Skill Shelf account',
+                    message=(
+                        f'Hello {full_name},\n\n'
+                        f'Your Skill Shelf email verification OTP is: {otp}\n\n'
+                        f'This OTP is valid for 10 minutes.\n\n'
+                        f'If you did not register, ignore this email.'
+                    ),
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[email],
+                    fail_silently=False,
+                )
+                messages.success(request, f'OTP sent to {email}')
+                return render(request, "register.html", {
+                    'step': 'verify',
+                    'email': email,
+                })
+            except Exception as e:
+                messages.error(request, f'Failed to send OTP: {str(e)}')
+                return render(request, "register.html")
+
+        # ── STEP 2: Verify OTP and create account ──
+        elif action == "verify_otp":
+            entered_otp = request.POST.get("otp", "").strip()
+            saved_otp   = request.session.get('register_otp')
+            email       = request.session.get('register_email')
+            pending     = request.session.get('pending_registration')
+
+            if not saved_otp or not pending:
+                messages.error(request, "Session expired. Please register again.")
+                return render(request, "register.html")
+
+            if entered_otp != saved_otp:
+                messages.error(request, "Invalid OTP. Please try again.")
+                return render(request, "register.html", {
+                    'step': 'verify',
+                    'email': email,
+                })
+
+            # OTP correct — create the account
+            User.objects.create_user(
+                email      = pending['email'],
+                password   = pending['password'],
+                full_name  = pending['full_name'],
+                student_id = pending['student_id'],
+            )
+
+            # Clear session data
+            del request.session['pending_registration']
+            del request.session['register_otp']
+            del request.session['register_email']
+
+            messages.success(request, "Email verified! Account created. Please log in.")
+            return redirect("login")
+
+        # ── RESEND OTP ──
+        elif action == "resend_otp":
+            import random
+            email     = request.session.get('register_email')
+            pending   = request.session.get('pending_registration')
+
+            if not email or not pending:
+                messages.error(request, "Session expired. Please register again.")
+                return render(request, "register.html")
+
+            otp = str(random.randint(100000, 999999))
+            request.session['register_otp'] = otp
+
+            try:
+                send_mail(
+                    subject='Verify your Skill Shelf account',
+                    message=(
+                        f'Hello {pending["full_name"]},\n\n'
+                        f'Your new OTP is: {otp}\n\n'
+                        f'Valid for 10 minutes.'
+                    ),
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[email],
+                    fail_silently=False,
+                )
+                messages.success(request, f'New OTP sent to {email}')
+            except Exception as e:
+                messages.error(request, f'Failed to resend OTP: {str(e)}')
+
+            return render(request, "register.html", {
+                'step': 'verify',
+                'email': email,
+            })
 
     return render(request, "register.html")
-
-
 # ─────────────────────────────────────────────
 # LOGIN
 # ─────────────────────────────────────────────
@@ -461,3 +572,156 @@ def profile_view(request):
             return redirect("profile")
 
     return no_cache(render(request, "profile.html", {"user": user}))
+
+
+
+# ─────────────────────────────────────────────
+# SEND OTP
+# ─────────────────────────────────────────────
+
+@csrf_exempt
+def send_otp_view(request):
+    if request.method != "POST":
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    data   = json.loads(request.body)
+    method = data.get('method')
+    value  = data.get('value', '').strip()
+
+    # Find user
+    try:
+        if method == 'email':
+            user = User.objects.get(email=value)
+        else:
+            user = User.objects.get(phone=value)
+    except User.DoesNotExist:
+        return JsonResponse({'error': 'No account found with these details.'}, status=404)
+
+    # Generate OTP
+    otp = OTPVerification.generate_otp()
+
+    # Save OTP to DB (delete old ones first)
+    OTPVerification.objects.filter(user=user, method=method, is_used=False).delete()
+    OTPVerification.objects.create(user=user, otp=otp, method=method)
+
+    # ── Send via Email ──
+    if method == 'email':
+        try:
+            send_mail(
+                subject='Your Skill Shelf OTP',
+                message=(
+                    f'Hello {user.full_name},\n\n'
+                    f'Your OTP for Skill Shelf login is: {otp}\n\n'
+                    f'This OTP is valid for 5 minutes.\n\n'
+                    f'Do not share this OTP with anyone.'
+                ),
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[value],
+                fail_silently=False,
+            )
+            return JsonResponse({'success': True, 'message': f'OTP sent to {value}'})
+        except Exception as e:
+            return JsonResponse({'error': f'Failed to send email: {str(e)}'}, status=500)
+
+    elif method == 'mobile':
+        try:
+            # Clean number
+            clean_number = value.strip()
+            if clean_number.startswith('+91'):
+                clean_number = clean_number[3:]
+            elif clean_number.startswith('91') and len(clean_number) == 12:
+                clean_number = clean_number[2:]
+            elif clean_number.startswith('0'):
+                clean_number = clean_number[1:]
+
+            if not clean_number.isdigit() or len(clean_number) != 10:
+                return JsonResponse({'error': 'Please enter a valid 10-digit mobile number.'}, status=400)
+
+            # Format to international format for Twilio
+            phone_international = f'+91{clean_number}'
+
+            from twilio.rest import Client
+            client = Client(
+                settings.TWILIO_ACCOUNT_SID,
+                settings.TWILIO_AUTH_TOKEN
+            )
+
+            message = client.messages.create(
+                body=(
+                    f'Hello! Your Skill Shelf OTP is: {otp}\n'
+                    f'Valid for 5 minutes. Do not share with anyone.'
+                ),
+                from_=settings.TWILIO_PHONE_NUMBER,
+                to=phone_international
+            )
+
+            print(f"[Twilio] Message SID: {message.sid}")
+            print(f"[Twilio] Status: {message.status}")
+
+            return JsonResponse({
+                'success': True,
+                'message': f'OTP sent to {clean_number}'
+            })
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return JsonResponse({'error': f'SMS error: {str(e)}'}, status=500)
+    return JsonResponse({'error': 'Invalid method'}, status=400)
+
+# ─────────────────────────────────────────────
+# VERIFY OTP  — login user after OTP check
+# ─────────────────────────────────────────────
+
+@csrf_exempt
+def verify_otp_view(request):
+    if request.method != "POST":
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    data   = json.loads(request.body)
+    method = data.get('method')
+    value  = data.get('value', '').strip()
+    otp    = data.get('otp', '').strip()
+
+    try:
+        if method == 'email':
+            user = User.objects.get(email=value)
+        else:
+            user = User.objects.get(phone=value)
+    except User.DoesNotExist:
+        return JsonResponse({'error': 'User not found.'}, status=404)
+
+    # Find latest unused OTP
+    try:
+        otp_obj = OTPVerification.objects.filter(
+            user=user, method=method, is_used=False
+        ).latest('created_at')
+    except OTPVerification.DoesNotExist:
+        return JsonResponse({'error': 'No OTP found. Please request a new one.'}, status=400)
+
+    if otp_obj.is_expired():
+        return JsonResponse({'error': 'OTP has expired. Please request a new one.'}, status=400)
+
+    if otp_obj.otp != otp:
+        return JsonResponse({'error': 'Invalid OTP. Please try again.'}, status=400)
+
+    # Mark OTP as used
+    otp_obj.is_used = True
+    otp_obj.save()
+
+    # Log the user in
+    from django.contrib.auth import login
+    user.backend = 'django.contrib.auth.backends.ModelBackend'
+    login(request, user)
+
+    return JsonResponse({'success': True, 'redirect': '/dashboard/'})
+
+
+# ─────────────────────────────────────────────
+# RESEND OTP
+# ─────────────────────────────────────────────
+
+@csrf_exempt
+def resend_otp_view(request):
+    # Just call send_otp_view again
+    return send_otp_view(request)
