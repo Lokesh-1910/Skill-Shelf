@@ -11,7 +11,9 @@ from django.db.models import Q, Count, Sum
 from django.utils import timezone
 from .models import User, Document,OTPVerification
 import os
-
+from django.views.decorators.http import require_POST
+from .chatbot import chat as ai_chat, get_expiry_warnings
+from .models import User, Document, ChatMessage
 from django.core.mail import send_mail
 from django.conf import settings
 
@@ -573,6 +575,109 @@ def profile_view(request):
 
     return no_cache(render(request, "profile.html", {"user": user}))
 
+
+# ─────────────────────────────────────────────
+# CHAT PAGE
+# ─────────────────────────────────────────────
+
+@never_cache
+@login_required(login_url='login')
+def chat_view(request):
+    warnings = get_expiry_warnings(request.user)
+    context  = {
+        'user':            request.user,
+        'expiry_warnings': warnings,
+        'doc_count':       Document.objects.filter(owner=request.user).count(),
+    }
+    return no_cache(render(request, 'chat.html', context))
+
+
+# ─────────────────────────────────────────────
+# CHAT API  — permanent memory per user
+# ─────────────────────────────────────────────
+
+@require_POST
+@login_required(login_url='login')
+def chat_api(request):
+    try:
+        body    = json.loads(request.body)
+        message = (body.get('message') or '').strip()
+        doc_id  = body.get('doc_id')
+
+        if not message:
+            return JsonResponse({'error': 'Empty message'}, status=400)
+
+        if doc_id:
+            try:
+                doc_id = int(doc_id)
+                Document.objects.get(id=doc_id, owner=request.user)
+            except (Document.DoesNotExist, ValueError):
+                doc_id = None
+
+        # ── Load full chat history from DB ──────────────────────
+        past = ChatMessage.objects.filter(
+            owner=request.user
+        ).order_by('-created_at')[:40]
+        past = list(reversed(past))
+
+        history = [
+            {
+                'role':  'user' if m.role == 'user' else 'model',
+                'parts': [m.message]
+            }
+            for m in past
+        ]
+
+        # ── Get AI reply ────────────────────────────────────────
+        reply    = ai_chat(request.user, message, history, target_doc_id=doc_id)
+        warnings = get_expiry_warnings(request.user)
+
+        # ── Save both messages to DB permanently ────────────────
+        ChatMessage.objects.create(owner=request.user, role='user', message=message)
+        ChatMessage.objects.create(owner=request.user, role='bot',  message=reply)
+
+        return JsonResponse({'reply': reply, 'warnings': warnings})
+
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+# ─────────────────────────────────────────────
+# CHAT HISTORY API  — load past messages for widget
+# ─────────────────────────────────────────────
+
+@login_required(login_url='login')
+def chat_history_api(request):
+    """Returns the last 50 messages for the logged-in user."""
+    msgs = ChatMessage.objects.filter(
+        owner=request.user
+    ).order_by('-created_at')[:50]
+    msgs = list(reversed(msgs))
+
+    data = [
+        {
+            'role':    m.role,
+            'message': m.message,
+            'time':    m.created_at.strftime('%I:%M %p'),
+            'date':    m.created_at.strftime('%Y-%m-%d'),
+        }
+        for m in msgs
+    ]
+    return JsonResponse({'messages': data})
+
+
+# ─────────────────────────────────────────────
+# CLEAR CHAT HISTORY API
+# ─────────────────────────────────────────────
+
+@require_POST
+@login_required(login_url='login')
+def chat_clear_api(request):
+    """Deletes all chat history for the logged-in user."""
+    ChatMessage.objects.filter(owner=request.user).delete()
+    return JsonResponse({'status': 'cleared'})
 
 
 # ─────────────────────────────────────────────

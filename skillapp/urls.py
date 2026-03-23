@@ -20,6 +20,11 @@ urlpatterns = [
     path('documents/<int:doc_id>/download/',views.document_download_view,name='document_download'),
     path('documents/<int:doc_id>/delete/',views.document_delete_view,name='document_delete'),
     path('send-otp/',   views.send_otp_view,   name='send_otp'),
-path('verify-otp/', views.verify_otp_view, name='verify_otp'),
-path('resend-otp/', views.resend_otp_view, name='resend_otp'),
+    path('verify-otp/', views.verify_otp_view, name='verify_otp'),
+    path('resend-otp/', views.resend_otp_view, name='resend_otp'),
+
+    path('chat/',               views.chat_view,        name='chat'),
+    path('api/chat/',           views.chat_api,         name='chat_api'),
+    path('api/chat/history/',   views.chat_history_api, name='chat_history_api'),
+    path('api/chat/clear/',     views.chat_clear_api,   name='chat_clear_api'),
 ]

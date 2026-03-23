@@ -129,6 +129,9 @@ class Document(models.Model):
         ("expired",  "Expired"),
         ("archived", "Archived"),
     ]
+    expiry_date = models.DateField(null=True, blank=True, help_text="e.g. passport/ID expiry date")
+
+
 
     # ── Allowed file extensions ────────────────────────────────────
     ALLOWED_EXTENSIONS = [
@@ -228,6 +231,24 @@ class Document(models.Model):
     @property
     def is_image(self):
         return self.file_type in ["jpg", "jpeg", "png"]
+    
+
+class ChatMessage(models.Model):
+    ROLE_CHOICES = [
+        ('user', 'User'),
+        ('bot',  'Bot'),
+    ]
+    owner      = models.ForeignKey(User, on_delete=models.CASCADE, related_name='chat_messages')
+    role       = models.CharField(max_length=10, choices=ROLE_CHOICES)
+    message    = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'skillshelf_chat'
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"{self.owner.email} [{self.role}]: {self.message[:50]}"
 
 
 import random
