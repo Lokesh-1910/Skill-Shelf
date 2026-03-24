@@ -184,106 +184,294 @@
         </div>
     </section>
 
+<!-- ═══════════════════════════
+     SECURITY TAB
+════════════════════════════ -->
+<section id="securityTab" class="tab-content hidden">
 
-    <!-- ═══════════════════════════
-         SECURITY TAB
-    ════════════════════════════ -->
-    <section id="securityTab" class="tab-content hidden">
-        <div class="card">
+    <!-- ── CHANGE PASSWORD CARD ── -->
+    <div class="card" id="passwordCard">
+        <div class="card-header">
+            <div>
+                <h2 class="card-title">
+                    <i class="fas fa-lock"></i> Change Password
+                </h2>
+                <p class="card-subtitle">Verify your email with OTP before updating your password</p>
+            </div>
+            <div class="sec-badge" id="pwBadge">
+                <i class="fas fa-shield-alt"></i> OTP Protected
+            </div>
+        </div>
 
-            <div class="card-header">
+        <!-- STEP 1: Request OTP -->
+        <div id="pw-step1">
+            <div class="sec-info-box">
+                <i class="fas fa-info-circle"></i>
+                <span>An OTP will be sent to <strong>{{ user.email }}</strong> to verify your identity before changing your password.</span>
+            </div>
+            <div class="action-buttons" style="border-top:none; margin-top:0; padding-top:0;">
+                <button type="button" class="btn btn-primary" id="sendPwOtpBtn"
+                        onclick="sendSecurityOtp('password')">
+                    <i class="fas fa-paper-plane"></i> Send OTP to Email
+                </button>
+            </div>
+            <div id="pw-otp-msg" class="sec-msg"></div>
+        </div>
+
+        <!-- STEP 2: Enter OTP -->
+        <div id="pw-step2" class="hidden">
+            <div class="otp-sent-banner">
+                <i class="fas fa-envelope-open-text"></i>
                 <div>
-                    <h2 class="card-title">Account Security</h2>
-                    <p class="card-subtitle">Update your password</p>
+                    <strong>OTP Sent!</strong>
+                    <p>Enter the 6-digit OTP sent to {{ user.email }}</p>
                 </div>
             </div>
 
-            <form method="POST" action="{% url 'profile' %}">
+            <div class="sec-otp-row">
+                <input type="text" maxlength="1" class="sec-otp-cell" id="pw_o1"
+                       oninput="secOtpIn(this,null,'pw_o2')"
+                       onkeydown="secOtpBack(event,this,null,'pw_o2')">
+                <input type="text" maxlength="1" class="sec-otp-cell" id="pw_o2"
+                       oninput="secOtpIn(this,'pw_o1','pw_o3')"
+                       onkeydown="secOtpBack(event,this,'pw_o1','pw_o3')">
+                <input type="text" maxlength="1" class="sec-otp-cell" id="pw_o3"
+                       oninput="secOtpIn(this,'pw_o2','pw_o4')"
+                       onkeydown="secOtpBack(event,this,'pw_o2','pw_o4')">
+                <input type="text" maxlength="1" class="sec-otp-cell" id="pw_o4"
+                       oninput="secOtpIn(this,'pw_o3','pw_o5')"
+                       onkeydown="secOtpBack(event,this,'pw_o3','pw_o5')">
+                <input type="text" maxlength="1" class="sec-otp-cell" id="pw_o5"
+                       oninput="secOtpIn(this,'pw_o4','pw_o6')"
+                       onkeydown="secOtpBack(event,this,'pw_o4','pw_o6')">
+                <input type="text" maxlength="1" class="sec-otp-cell" id="pw_o6"
+                       oninput="secOtpIn(this,'pw_o5',null)"
+                       onkeydown="secOtpBack(event,this,'pw_o5',null)">
+            </div>
+
+            <div class="sec-otp-actions">
+                <button type="button" class="btn btn-primary" onclick="verifySecurityOtp('password')">
+                    <i class="fas fa-check"></i> Verify OTP
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="resendSecurityOtp('password')">
+                    <i class="fas fa-redo"></i> Resend OTP
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="resetStep('password')">
+                    <i class="fas fa-arrow-left"></i> Back
+                </button>
+            </div>
+            <div id="pw-verify-msg" class="sec-msg"></div>
+        </div>
+
+        <!-- STEP 3: New Password Form -->
+        <div id="pw-step3" class="hidden">
+            <div class="verified-banner">
+                <i class="fas fa-check-circle"></i>
+                <span>Email verified! Now set your new password.</span>
+            </div>
+
+            <form method="POST" action="{% url 'profile' %}" id="changePasswordForm">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="change_password">
 
-                <div class="form-section">
-                    <h3 class="section-title">Change Password</h3>
+                <div class="form-row" style="margin-top:20px;">
+        <div class="form-group">
+            <label class="form-label">New Password</label>
+            <input type="password" class="form-control"
+                   id="newPassword" name="newPassword"
+                   placeholder="Minimum 8 characters" required>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Confirm New Password</label>
+            <input type="password" class="form-control"
+                   id="confirmPassword" name="confirmPassword"
+                   placeholder="Re-enter new password" required>
+        </div>
+    </div>
 
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Current Password</label>
-                            <!--
-                                The placeholder shows bullets to mimic a pre-filled password.
-                                The user must type their actual current password.
-                                We NEVER put the real password in value="" — that is a security risk.
-                            -->
-                            <input type="password" class="form-control"
-                                   id="currentPassword"
-                                   name="currentPassword"
-                                   placeholder="••••••••"
-                                   autocomplete="current-password">
-                            <p class="card-subtitle">Type your current password to verify your identity</p>
+                <!-- Strength bar -->
+                <div class="password-strength">
+                    <div class="strength-bar">
+                        <div class="strength-fill" id="strengthFill"></div>
+                    </div>
+                    <p class="strength-text" id="strengthText">Enter a password to check strength</p>
+                </div>
+
+                <!-- Requirements -->
+                <div class="form-group full-width" style="margin-top:12px;">
+                    <p class="card-subtitle">Password must contain:</p>
+                    <div class="pw-reqs">
+                        <div class="pw-req-item">
+                            <span id="reqLength" class="text-danger">●</span>
+                            <span>At least 8 characters</span>
+                        </div>
+                        <div class="pw-req-item">
+                            <span id="reqUpper" class="text-danger">●</span>
+                            <span>One uppercase letter</span>
+                        </div>
+                        <div class="pw-req-item">
+                            <span id="reqLower" class="text-danger">●</span>
+                            <span>One lowercase letter</span>
+                        </div>
+                        <div class="pw-req-item">
+                            <span id="reqNumber" class="text-danger">●</span>
+                            <span>One number</span>
                         </div>
                     </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">New Password</label>
-                            <input type="password" class="form-control"
-                                   id="newPassword"
-                                   name="newPassword"
-                                   placeholder="Minimum 8 characters"
-                                   oninput="checkPasswordStrength(this.value)"
-                                   autocomplete="new-password">
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Confirm New Password</label>
-                            <input type="password" class="form-control"
-                                   id="confirmPassword"
-                                   name="confirmPassword"
-                                   placeholder="Re-enter new password"
-                                   oninput="validatePasswordMatch()"
-                                   autocomplete="new-password">
-                        </div>
-                    </div>
-
-                    <!-- Strength bar -->
-                    <div class="password-strength">
-                        <div class="strength-bar">
-                            <div class="strength-fill" id="strengthFill"></div>
-                        </div>
-                        <p class="strength-text" id="strengthText">Enter a password to check strength</p>
-                    </div>
-
-                    <!-- Requirements -->
-                    <div class="form-group full-width">
-                        <p class="card-subtitle">Password must contain:</p>
-                        <div class="pw-reqs">
-                            <div class="pw-req-item">
-                                <span id="reqLength" class="text-danger">●</span>
-                                <span>At least 8 characters</span>
-                            </div>
-                            <div class="pw-req-item">
-                                <span id="reqUpper" class="text-danger">●</span>
-                                <span>One uppercase letter</span>
-                            </div>
-                            <div class="pw-req-item">
-                                <span id="reqLower" class="text-danger">●</span>
-                                <span>One lowercase letter</span>
-                            </div>
-                            <div class="pw-req-item">
-                                <span id="reqNumber" class="text-danger">●</span>
-                                <span>One number</span>
-                            </div>
-                        </div>
-                    </div>
-
                 </div>
 
                 <div class="action-buttons">
-                    <button type="submit" class="btn btn-primary">Update Password</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Update Password
+                    </button>
+                    <button type="button" class="btn btn-secondary"
+                            onclick="resetStep('password')">
+                        Cancel
+                    </button>
                 </div>
-
             </form>
         </div>
-    </section>
+    </div>
 
+    <!-- ── CHANGE PASSKEY CARD ── -->
+    <div class="card" id="passkeyCard">
+        <div class="card-header">
+            <div>
+                <h2 class="card-title">
+                    <i class="fas fa-key"></i> Change Document Passkey
+                </h2>
+                <p class="card-subtitle">Update the 4-digit passkey used to access your documents</p>
+            </div>
+            <div class="sec-badge" id="pkBadge">
+                {% if user.doc_passcode %}
+                <i class="fas fa-lock"></i> Passkey Set
+                {% else %}
+                <i class="fas fa-lock-open"></i> Not Set
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- STEP 1: Request OTP -->
+        <div id="pk-step1">
+            <div class="sec-info-box">
+                <i class="fas fa-info-circle"></i>
+                <span>An OTP will be sent to <strong>{{ user.email }}</strong> to verify your identity before changing your document passkey.</span>
+            </div>
+            <div class="action-buttons" style="border-top:none; margin-top:0; padding-top:0;">
+                <button type="button" class="btn btn-primary" id="sendPkOtpBtn"
+                        onclick="sendSecurityOtp('passkey')">
+                    <i class="fas fa-paper-plane"></i> Send OTP to Email
+                </button>
+            </div>
+            <div id="pk-otp-msg" class="sec-msg"></div>
+        </div>
+
+        <!-- STEP 2: Enter OTP -->
+        <div id="pk-step2" class="hidden">
+            <div class="otp-sent-banner">
+                <i class="fas fa-envelope-open-text"></i>
+                <div>
+                    <strong>OTP Sent!</strong>
+                    <p>Enter the 6-digit OTP sent to {{ user.email }}</p>
+                </div>
+            </div>
+
+            <div class="sec-otp-row">
+                <input type="text" maxlength="1" class="sec-otp-cell" id="pk_o1"
+                       oninput="secOtpIn(this,null,'pk_o2')"
+                       onkeydown="secOtpBack(event,this,null,'pk_o2')">
+                <input type="text" maxlength="1" class="sec-otp-cell" id="pk_o2"
+                       oninput="secOtpIn(this,'pk_o1','pk_o3')"
+                       onkeydown="secOtpBack(event,this,'pk_o1','pk_o3')">
+                <input type="text" maxlength="1" class="sec-otp-cell" id="pk_o3"
+                       oninput="secOtpIn(this,'pk_o2','pk_o4')"
+                       onkeydown="secOtpBack(event,this,'pk_o2','pk_o4')">
+                <input type="text" maxlength="1" class="sec-otp-cell" id="pk_o4"
+                       oninput="secOtpIn(this,'pk_o3','pk_o5')"
+                       onkeydown="secOtpBack(event,this,'pk_o3','pk_o5')">
+                <input type="text" maxlength="1" class="sec-otp-cell" id="pk_o5"
+                       oninput="secOtpIn(this,'pk_o4','pk_o6')"
+                       onkeydown="secOtpBack(event,this,'pk_o4','pk_o6')">
+                <input type="text" maxlength="1" class="sec-otp-cell" id="pk_o6"
+                       oninput="secOtpIn(this,'pk_o5',null)"
+                       onkeydown="secOtpBack(event,this,'pk_o5',null)">
+            </div>
+
+            <div class="sec-otp-actions">
+                <button type="button" class="btn btn-primary" onclick="verifySecurityOtp('passkey')">
+                    <i class="fas fa-check"></i> Verify OTP
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="resendSecurityOtp('passkey')">
+                    <i class="fas fa-redo"></i> Resend OTP
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="resetStep('passkey')">
+                    <i class="fas fa-arrow-left"></i> Back
+                </button>
+            </div>
+            <div id="pk-verify-msg" class="sec-msg"></div>
+        </div>
+
+        <!-- STEP 3: New Passkey Form -->
+        <div id="pk-step3" class="hidden">
+            <div class="verified-banner">
+                <i class="fas fa-check-circle"></i>
+                <span>Email verified! Now set your new 4-digit document passkey.</span>
+            </div>
+
+            <div class="passkey-set-section">
+                <label class="form-label" style="margin-bottom:16px;">
+                    Enter New 4-Digit Passkey
+                </label>
+                <div class="passkey-input-row">
+                    <input type="password" maxlength="1" class="passkey-cell" id="pk_n1"
+                           oninput="pkIn(this,null,'pk_n2')"
+                           onkeydown="pkBack(event,this,null,'pk_n2')">
+                    <input type="password" maxlength="1" class="passkey-cell" id="pk_n2"
+                           oninput="pkIn(this,'pk_n1','pk_n3')"
+                           onkeydown="pkBack(event,this,'pk_n1','pk_n3')">
+                    <input type="password" maxlength="1" class="passkey-cell" id="pk_n3"
+                           oninput="pkIn(this,'pk_n2','pk_n4')"
+                           onkeydown="pkBack(event,this,'pk_n2','pk_n4')">
+                    <input type="password" maxlength="1" class="passkey-cell" id="pk_n4"
+                           oninput="pkIn(this,'pk_n3',null)"
+                           onkeydown="pkBack(event,this,'pk_n3',null)">
+                </div>
+
+                <label class="form-label" style="margin-top:20px; margin-bottom:16px;">
+                    Confirm New Passkey
+                </label>
+                <div class="passkey-input-row">
+                    <input type="password" maxlength="1" class="passkey-cell" id="pk_c1"
+                           oninput="pkIn(this,null,'pk_c2')"
+                           onkeydown="pkBack(event,this,null,'pk_c2')">
+                    <input type="password" maxlength="1" class="passkey-cell" id="pk_c2"
+                           oninput="pkIn(this,'pk_c1','pk_c3')"
+                           onkeydown="pkBack(event,this,'pk_c1','pk_c3')">
+                    <input type="password" maxlength="1" class="passkey-cell" id="pk_c3"
+                           oninput="pkIn(this,'pk_c2','pk_c4')"
+                           onkeydown="pkBack(event,this,'pk_c2','pk_c4')">
+                    <input type="password" maxlength="1" class="passkey-cell" id="pk_c4"
+                           oninput="pkIn(this,'pk_c3',null)"
+                           onkeydown="pkBack(event,this,'pk_c3',null)">
+                </div>
+
+                <div id="pk-set-msg" class="sec-msg" style="margin-top:12px;"></div>
+
+                <div class="action-buttons">
+                    <button type="button" class="btn btn-primary"
+                            onclick="saveNewPasskey()">
+                        <i class="fas fa-save"></i> Save Passkey
+                    </button>
+                    <button type="button" class="btn btn-secondary"
+                            onclick="resetStep('passkey')">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</section>
 
     <!-- ═══════════════════════════
          SETTINGS TAB
@@ -441,6 +629,7 @@ function toggleDarkMode(checkbox) {
         checkbox.checked ? 'Dark Mode' : 'Light Mode';
 }
 </script>
+<script src="{% static 'JS/security.js' %}"></script>
 {% include 'partials/chatbot_widget.html' %}
 </body>
 </html>

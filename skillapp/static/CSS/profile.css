@@ -715,3 +715,235 @@ img.profile-avatar {
     box-shadow: 0 8px 20px rgba(0,0,0,0.1);
 }
  
+/* ═══════════════════════════════════
+   SECURITY TAB — OTP FLOW STYLES
+═══════════════════════════════════ */
+
+/* Security badge in card header */
+.sec-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    background: #eff6ff;
+    color: #2563eb;
+    border: 1px solid #bfdbfe;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.dark-mode .sec-badge {
+    background: rgba(37,99,235,0.15);
+    border-color: rgba(37,99,235,0.3);
+}
+
+/* Info box at step 1 */
+.sec-info-box {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 18px;
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 10px;
+    font-size: 14px;
+    color: #0369a1;
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+
+.dark-mode .sec-info-box {
+    background: rgba(3,105,161,0.1);
+    border-color: rgba(3,105,161,0.3);
+    color: #7dd3fc;
+}
+
+.sec-info-box i {
+    font-size: 16px;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.sec-info-box strong { font-weight: 600; }
+
+/* OTP sent banner */
+.otp-sent-banner {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 20px;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 10px;
+    margin-bottom: 24px;
+    color: #166534;
+    font-size: 14px;
+}
+
+.dark-mode .otp-sent-banner {
+    background: rgba(22,101,52,0.12);
+    border-color: rgba(22,163,74,0.3);
+    color: #86efac;
+}
+
+.otp-sent-banner i {
+    font-size: 24px;
+    color: #16a34a;
+    flex-shrink: 0;
+}
+
+.otp-sent-banner strong {
+    display: block;
+    font-size: 15px;
+    margin-bottom: 2px;
+}
+
+.otp-sent-banner p {
+    margin: 0;
+    font-size: 13px;
+    opacity: 0.85;
+}
+
+/* OTP input row */
+.sec-otp-row {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-start;
+    margin-bottom: 20px;
+}
+
+.sec-otp-cell {
+    width: 52px;
+    height: 56px;
+    text-align: center;
+    font-size: 22px;
+    font-weight: 700;
+    border: 2px solid #d1d5db;
+    border-radius: 10px;
+    outline: none;
+    color: #1e293b;
+    background: white;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+
+.dark-mode .sec-otp-cell {
+    background: #404040;
+    border-color: #555;
+    color: #e0e0e0;
+}
+
+.sec-otp-cell:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+}
+
+.sec-otp-cell.filled {
+    border-color: #2563eb;
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+/* OTP action row */
+.sec-otp-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+}
+
+/* Status messages */
+.sec-msg {
+    font-size: 13px;
+    font-weight: 500;
+    min-height: 20px;
+    padding: 6px 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.sec-msg.msg-error   { color: #dc2626; }
+.sec-msg.msg-success { color: #16a34a; }
+.sec-msg.msg-info    { color: #2563eb; }
+.sec-msg.msg-loading { color: #6b7280; }
+
+/* Verified banner (step 3) */
+.verified-banner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #16a34a;
+}
+
+.dark-mode .verified-banner {
+    background: rgba(22,163,74,0.1);
+    border-color: rgba(22,163,74,0.3);
+}
+
+.verified-banner i { font-size: 18px; }
+
+/* Passkey set section */
+.passkey-set-section {
+    margin-top: 4px;
+}
+
+.passkey-input-row {
+    display: flex;
+    gap: 14px;
+}
+
+.passkey-cell {
+    width: 64px;
+    height: 68px;
+    text-align: center;
+    font-size: 26px;
+    font-weight: 700;
+    border: 2px solid #d1d5db;
+    border-radius: 12px;
+    outline: none;
+    color: #1e293b;
+    background: white;
+    transition: all 0.2s;
+    font-family: inherit;
+    -webkit-text-security: disc;
+}
+
+.dark-mode .passkey-cell {
+    background: #404040;
+    border-color: #555;
+    color: #e0e0e0;
+}
+
+.passkey-cell:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+}
+
+.passkey-cell.filled {
+    border-color: #2563eb;
+    background: #eff6ff;
+}
+
+/* Shake animation */
+@keyframes secShake {
+    0%,100% { transform: translateX(0); }
+    20%      { transform: translateX(-6px); }
+    40%      { transform: translateX(6px); }
+    60%      { transform: translateX(-4px); }
+    80%      { transform: translateX(4px); }
+}
+
+.sec-otp-row.shake,
+.passkey-input-row.shake {
+    animation: secShake 0.4s ease;
+}

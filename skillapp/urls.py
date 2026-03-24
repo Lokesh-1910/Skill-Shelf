@@ -28,4 +28,5 @@ urlpatterns = [
     path('api/chat/history/',   views.chat_history_api, name='chat_history_api'),
     path('api/chat/clear/',     views.chat_clear_api,   name='chat_clear_api'),
     path('documents/passcode/', views.verify_doc_passcode, name='doc_passcode'),
+    path('verify-otp-only/', views.verify_otp_only, name='verify_otp_only'),
 ]
