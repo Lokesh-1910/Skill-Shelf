@@ -1,177 +1,722 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Skill Shelf – All Documents</title>
-
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+    <meta http-equiv="Pragma" content="no-cache">
+    <title>Skill Shelf - All Documents</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'CSS/base.css' %}">
     <link rel="stylesheet" href="{% static 'CSS/Document.css' %}">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 </head>
-
 <body>
 
-    {% include 'partials/header.html' %}
+{% include 'partials/header.html' %}
 
-    <div class="container">
-        <!-- SIDEBAR -->
-        <aside class="sidebar">
-            <h4>Document Categories</h4>
-            <div id="categories"></div>
+<!-- Pass DB data to JS safely — zero Django tags inside script blocks -->
+{{ documents_json|json_script:"documents-data" }}
+<!-- ═══ PASSCODE MODAL ═══ -->
+<div class="passcode-overlay" id="passcodeOverlay"
+     {% if not needs_passcode %}style="display:none;"{% endif %}>
+    <div class="passcode-modal">
 
-            <h4 style="margin-top:28px;">Filters</h4>
+        <div class="passcode-icon">
+            <i class="fas fa-lock"></i>
+        </div>
 
-            <div class="filter">
-                <select id="dateFilter">
-                    <option value="all">📅 Date Uploaded</option>
-                    <option value="2023">2023</option>
-                    <option value="2024">2024</option>
-                </select>
-            </div>
+        {% if not has_passcode %}
+        <!-- FIRST TIME: Set passcode -->
+        <h2>Secure Your Documents</h2>
+        <p>Create a 4-digit passcode to protect access to your documents.</p>
+        {% else %}
+        <!-- RETURNING: Enter passcode -->
+        <h2>Documents Locked</h2>
+        <p>Enter your 4-digit passcode to access your documents.</p>
+        {% endif %}
 
-            <div class="filter">
-                <select id="tagFilter">
-                    <option value="all">🏷 All Tags</option>
-                    <option value="important">Important</option>
-                    <option value="official">Official</option>
-                    <option value="personal">Personal</option>
-                </select>
-            </div>
+        <div class="passcode-boxes" id="passcodeBoxes">
+            <input type="password" maxlength="1" class="pbox" id="p1"
+                   oninput="pInput(this,null,'p2')"
+                   onkeydown="pBack(event,this,null,'p2')">
+            <input type="password" maxlength="1" class="pbox" id="p2"
+                   oninput="pInput(this,'p1','p3')"
+                   onkeydown="pBack(event,this,'p1','p3')">
+            <input type="password" maxlength="1" class="pbox" id="p3"
+                   oninput="pInput(this,'p2','p4')"
+                   onkeydown="pBack(event,this,'p2','p4')">
+            <input type="password" maxlength="1" class="pbox" id="p4"
+                   oninput="pInput(this,'p3',null)"
+                   onkeydown="pBack(event,this,'p3',null)">
+        </div>
 
-            <div class="filter">
-                <select id="sizeFilter">
-                    <option value="all">📁 File Size</option>
-                    <option value="small">Small (< 1MB)</option>
-                    <option value="medium">Medium (1-2MB)</option>
-                    <option value="large">Large (> 2MB)</option>
-                </select>
-            </div>
-        </aside>
+        <div class="passcode-dots" id="passcodeDots">
+            <span class="pdot" id="dot1"></span>
+            <span class="pdot" id="dot2"></span>
+            <span class="pdot" id="dot3"></span>
+            <span class="pdot" id="dot4"></span>
+        </div>
 
-        <!-- MAIN -->
-        <main class="main">
-            <div class="main-header">
-                <div>
-                    <h2>All Documents</h2>
-                    <div class="document-count" id="docCount">6 documents found</div>
-                </div>
-            </div>
+        <div id="passcodeMsg" class="passcode-msg"></div>
 
-            <div class="controls">
-                <div class="search-container">
-                    <i class="fas fa-search"></i>
-                    <input id="search" placeholder="Search documents by name, category, or tag...">
-                </div>
-                <select id="sort">
-                    <option value="desc">📅 Newest First</option>
-                    <option value="asc">📅 Oldest First</option>
-                    <option value="name">A → Z</option>
-                    <option value="size">Size ↓</option>
-                </select>
-            </div>
+        <button class="passcode-btn" id="passcodeSubmit"
+                onclick="submitPasscode()">
+            {% if not has_passcode %}
+            <i class="fas fa-lock"></i> Set Passcode
+            {% else %}
+            <i class="fas fa-unlock"></i> Unlock Documents
+            {% endif %}
+        </button>
 
-            <div id="documents"></div>
-        </main>
+        {% if has_passcode %}
+        <div class="passcode-attempts" id="passcodeAttempts"></div>
+        {% endif %}
+
+        <a href="/dashboard/" class="passcode-back">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+
     </div>
+</div>
 
-    <!-- MODAL -->
-    <div class="modal" id="documentModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>
-                    <i class="fas fa-file-alt"></i>
-                    Document Viewer
-                </h3>
-                <button class="close-btn" id="closeModal">
-                    <i class="fas fa-times"></i>
-                </button>
+<div class="container">
+
+    <!-- ═══════════ SIDEBAR ═══════════ -->
+    <aside class="sidebar">
+        <h4>Document Categories</h4>
+        <div id="categories">
+
+            <!-- "All" tab — data-url keeps URL out of onclick -->
+            <div class="category {% if not filters.category %}active{% endif %}"
+                 data-url="/documents/">
+                <span>All</span>
+                <span class="count">{{ total_count }}</span>
             </div>
 
-            <div class="document-viewer">
-                <!-- Sidebar with document info -->
-                <div class="document-sidebar">
-                    <div class="info-section">
-                        <h4>Document Information</h4>
-                        <div class="info-grid" id="modalInfoGrid"></div>
-                    </div>
+            {% for slug, data in cat_counts.items %}
+            <div class="category {% if filters.category == slug %}active{% endif %}"
+                 data-url="/documents/?category={{ slug }}">
+                <span>{{ data.label }}</span>
+                <span class="count">{{ data.count }}</span>
+            </div>
+            {% endfor %}
+        </div>
 
-                    <div class="info-section">
-                        <h4>Description</h4>
-                        <div id="modalDescription" class="info-item"></div>
-                    </div>
+        <h4 style="margin-top:28px;">Filters</h4>
 
-                    <div class="info-section">
-                        <h4>Quick Actions</h4>
-                        <div class="action-buttons">
-                            <button class="btn btn-success" id="downloadBtn">
-                                <i class="fas fa-download"></i> Download
-                            </button>
-                            <button class="btn btn-secondary" id="printBtn">
-                                <i class="fas fa-print"></i> Print
-                            </button>
-                        </div>
-                    </div>
-                </div>
+        <div class="filter">
+            <select id="dateFilter">
+                <option value="">📅 Date Uploaded</option>
+                <option value="2023" {% if filters.year == '2023' %}selected{% endif %}>2023</option>
+                <option value="2024" {% if filters.year == '2024' %}selected{% endif %}>2024</option>
+                <option value="2025" {% if filters.year == '2025' %}selected{% endif %}>2025</option>
+                <option value="2026" {% if filters.year == '2026' %}selected{% endif %}>2026</option>
+            </select>
+        </div>
 
-                <!-- Main preview area -->
-                <div class="document-main">
-                    <div class="preview-modes">
-                        <button class="mode-btn active" data-mode="fit">
-                            <i class="fas fa-expand-alt"></i> Fit to Screen
-                        </button>
-                        <button class="mode-btn" data-mode="original">
-                            <i class="fas fa-search"></i> Original Size
-                        </button>
-                        <button class="mode-btn" data-mode="fullscreen">
-                            <i class="fas fa-expand"></i> Full Screen
-                        </button>
-                    </div>
+        <div class="filter">
+            <select id="tagFilter">
+                <option value="">🏷 All Tags</option>
+                {% for value, label in tag_choices %}
+                <option value="{{ value }}"
+                    {% if filters.tag == value %}selected{% endif %}>
+                    {{ label }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
 
-                    <div class="preview-container">
-                        <img id="modalImage" src="" alt="Document Preview" class="preview-image">
+        <div class="filter">
+            <select id="sizeFilter">
+                <option value="">📁 File Size</option>
+                <option value="small"
+                    {% if filters.size == 'small' %}selected{% endif %}>Small (&lt; 1MB)</option>
+                <option value="medium"
+                    {% if filters.size == 'medium' %}selected{% endif %}>Medium (1-2MB)</option>
+                <option value="large"
+                    {% if filters.size == 'large' %}selected{% endif %}>Large (&gt; 2MB)</option>
+            </select>
+        </div>
+    </aside>
 
-                        <div class="zoom-controls">
-                            <button id="zoomOut">
-                                <i class="fas fa-search-minus"></i>
-                            </button>
-                            <button id="zoomReset">
-                                <i class="fas fa-redo"></i>
-                            </button>
-                            <button id="zoomIn">
-                                <i class="fas fa-search-plus"></i>
-                            </button>
-                            <button id="rotateBtn">
-                                <i class="fas fa-redo-alt"></i>
-                            </button>
-                        </div>
-                    </div>
+    <!-- ═══════════ MAIN ═══════════ -->
+    <main class="main">
 
-                    <!-- Thumbnail strip for document pages -->
-                    <div class="thumbnail-strip" id="thumbnailStrip"></div>
-
-                    <div class="action-buttons">
-                        <button class="btn btn-primary" id="shareBtn">
-                            <i class="fas fa-share-alt"></i> Share Document
-                        </button>
-                        <button class="btn btn-success" id="saveCopyBtn">
-                            <i class="fas fa-copy"></i> Save Copy
-                        </button>
-                        <button class="btn btn-secondary" id="closeModal2">
-                            <i class="fas fa-times"></i> Close Viewer
-                        </button>
-                    </div>
+        <div class="main-header">
+            <div>
+                <h2>All Documents</h2>
+                <div class="document-count" id="docCount">
+                    {{ doc_count }} document{{ doc_count|pluralize }} found
                 </div>
             </div>
         </div>
+
+        <div class="controls">
+            <div class="search-container">
+                <i class="fas fa-search"></i>
+                <input id="search"
+                       placeholder="Search documents by name, category, or tag..."
+                       value="{{ filters.q }}">
+            </div>
+            <select id="sort">
+                <option value="desc"
+                    {% if not filters.sort or filters.sort == 'desc' %}selected{% endif %}>
+                    📅 Newest First
+                </option>
+                <option value="asc"
+                    {% if filters.sort == 'asc' %}selected{% endif %}>
+                    📅 Oldest First
+                </option>
+                <option value="name"
+                    {% if filters.sort == 'name' %}selected{% endif %}>
+                    A → Z
+                </option>
+                <option value="size"
+                    {% if filters.sort == 'size' %}selected{% endif %}>
+                    Size ↓
+                </option>
+            </select>
+        </div>
+
+        <!-- Document Cards — data-id used by JS, no onclick with Django tags -->
+        <div id="documents">
+            {% for doc in documents %}
+            <div class="card" data-id="{{ doc.id }}">
+                <div class="card-badge">{{ doc.file_type|upper }}</div>
+
+                {% if doc.is_image %}
+                    <img src="{{ doc.file.url }}" alt="{{ doc.title }}">
+                {% else %}
+                    <div style="height:160px;display:flex;align-items:center;
+                                justify-content:center;background:#f1f5f9;
+                                font-size:56px;color:#4a6fa5;">
+                        <i class="fas {{ doc.file_icon }}"></i>
+                    </div>
+                {% endif %}
+
+                <div class="card-body">
+                    <div class="card-tags">
+                        <span class="tag {{ doc.tags }}">{{ doc.tags }}</span>
+                        <span class="tag">{{ doc.category_display }}</span>
+                    </div>
+                    <h4>{{ doc.title }}</h4>
+                    <p>{{ doc.description|default:"No description provided."|truncatechars:80 }}</p>
+                    <div class="card-footer">
+                        <span>
+                            <i class="far fa-calendar"></i>
+                            {{ doc.uploaded_at|date:"M d, Y" }}
+                        </span>
+                        <span>
+                            <i class="far fa-file"></i>
+                            {{ doc.file_size_display }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div style="grid-column:1/-1;text-align:center;padding:80px 20px;color:#8798AD;">
+                <i class="fas fa-folder-open"
+                   style="font-size:72px;margin-bottom:20px;display:block;opacity:0.4;"></i>
+                <h3 style="margin-bottom:10px;color:#374151;">No documents found</h3>
+                <p>Try adjusting your filters or
+                   <a href="/upload/" style="color:#3b82f6;">
+                       upload your first document
+                   </a>
+                </p>
+            </div>
+            {% endfor %}
+        </div>
+
+    </main>
+</div>
+
+<!-- ═══════════════════════════════════════
+     MODAL — Document Viewer
+════════════════════════════════════════ -->
+<div class="modal" id="documentModal">
+    <div class="modal-content">
+
+        <div class="modal-header">
+            <h3>
+                <i class="fas fa-file-alt"></i>
+                Document Viewer
+            </h3>
+            <button class="close-btn" id="closeModal">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div class="document-viewer">
+
+            <!-- Sidebar -->
+            <div class="document-sidebar">
+
+                <div class="info-section">
+                    <h4>Document Information</h4>
+                    <div class="info-grid" id="modalInfoGrid"></div>
+                </div>
+
+                <div class="info-section">
+                    <h4>Description</h4>
+                    <div id="modalDescription" class="info-item"></div>
+                </div>
+
+                <div class="info-section">
+                    <h4>Quick Actions</h4>
+                    <div class="action-buttons">
+                        <a id="downloadBtn" href="#" class="btn btn-success">
+                            <i class="fas fa-download"></i> Download
+                        </a>
+                        <button id="deleteBtn" class="btn btn-secondary">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Preview -->
+            <div class="document-main">
+
+                <div class="preview-modes">
+                    <button class="mode-btn active" data-mode="fit">
+                        <i class="fas fa-expand-alt"></i> Fit to Screen
+                    </button>
+                    <button class="mode-btn" data-mode="original">
+                        <i class="fas fa-search"></i> Original Size
+                    </button>
+                    <button class="mode-btn" data-mode="fullscreen">
+                        <i class="fas fa-expand"></i> Full Screen
+                    </button>
+                </div>
+
+                <div class="preview-container">
+                    <img id="modalImage" src="" alt="Document Preview"
+                         class="preview-image" style="display:none;">
+
+                    <div id="modalFileIcon"
+                         style="display:none;height:300px;flex-direction:column;
+                                align-items:center;justify-content:center;
+                                font-size:80px;color:#4a6fa5;gap:16px;">
+                        <i class="fas fa-file-alt"></i>
+                        <p style="font-size:14px;color:#6b7280;">
+                            Preview not available — download to view
+                        </p>
+                    </div>
+
+                    <div class="zoom-controls">
+                        <button id="zoomOut">
+                            <i class="fas fa-search-minus"></i>
+                        </button>
+                        <button id="zoomReset">
+                            <i class="fas fa-redo"></i>
+                        </button>
+                        <button id="zoomIn">
+                            <i class="fas fa-search-plus"></i>
+                        </button>
+                        <button id="rotateBtn">
+                            <i class="fas fa-redo-alt"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="thumbnail-strip" id="thumbnailStrip"></div>
+
+                <div class="action-buttons">
+                    <button class="btn btn-primary" id="shareBtn">
+                        <i class="fas fa-share-alt"></i> Share Document
+                    </button>
+                    <button class="btn btn-success" id="saveCopyBtn">
+                        <i class="fas fa-copy"></i> Save Copy
+                    </button>
+                    <button class="btn btn-secondary" id="closeModal2">
+                        <i class="fas fa-times"></i> Close Viewer
+                    </button>
+                </div>
+
+            </div>
+        </div>
     </div>
+</div>
 
-    {% include 'partials/footer.html' %}
+<!-- Hidden delete form — POST required -->
+<form id="deleteForm" method="POST" action="" style="display:none;">
+    {% csrf_token %}
+</form>
+{% include 'partials/footer.html' %}
 
-    <script src="{% static 'JS/Document.js' %}"></script>
+<script>
+// ── All data comes from json_script — zero Django tags in JS ─────────
+var DOCUMENTS = JSON.parse(document.getElementById('documents-data').textContent);
+
+var currentDoc  = null;
+var zoomLevel   = 1;
+var rotation    = 0;
+
+// ── Category & filter sidebar clicks ────────────────────────────────
+document.querySelectorAll('.category[data-url]').forEach(function(el) {
+    el.style.cursor = 'pointer';
+    el.addEventListener('click', function() {
+        window.location.href = el.getAttribute('data-url');
+    });
+});
+
+// ── Filter dropdowns ─────────────────────────────────────────────────
+function applyFilter(key, value) {
+    var params = new URLSearchParams(window.location.search);
+    if (value && value !== '') {
+        params.set(key, value);
+    } else {
+        params.delete(key);
+    }
+    window.location.search = params.toString();
+}
+
+document.getElementById('dateFilter').addEventListener('change', function() {
+    applyFilter('year', this.value);
+});
+document.getElementById('tagFilter').addEventListener('change', function() {
+    applyFilter('tag', this.value);
+});
+document.getElementById('sizeFilter').addEventListener('change', function() {
+    applyFilter('size', this.value);
+});
+document.getElementById('sort').addEventListener('change', function() {
+    applyFilter('sort', this.value);
+});
+document.getElementById('search').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') applyFilter('q', this.value.trim());
+});
+
+// ── Document card clicks — wired via data-id ─────────────────────────
+document.querySelectorAll('.card[data-id]').forEach(function(card) {
+    card.addEventListener('click', function() {
+        openDocument(parseInt(card.getAttribute('data-id')));
+    });
+});
+
+// ── Open modal ───────────────────────────────────────────────────────
+function openDocument(docId) {
+    var doc = null;
+    for (var i = 0; i < DOCUMENTS.length; i++) {
+        if (DOCUMENTS[i].id === docId) { doc = DOCUMENTS[i]; break; }
+    }
+    if (!doc) return;
+    currentDoc = doc;
+    zoomLevel  = 1;
+    rotation   = 0;
+
+    // Info grid
+    document.getElementById('modalInfoGrid').innerHTML =
+        '<div class="info-item"><h5>Category</h5><p>' + doc.cat + '</p></div>' +
+        '<div class="info-item"><h5>Upload Date</h5><p>' +
+            new Date(doc.date).toLocaleDateString('en-US',
+                {year:'numeric', month:'long', day:'numeric'}) +
+        '</p></div>' +
+        '<div class="info-item"><h5>File Size</h5><p>' + doc.size + '</p></div>' +
+        '<div class="info-item"><h5>Format</h5><p>' + doc.format + '</p></div>' +
+        '<div class="info-item"><h5>Uploaded By</h5><p>' + doc.uploader + '</p></div>' +
+        '<div class="info-item"><h5>Last Modified</h5><p>' +
+            new Date(doc.lastModified).toLocaleDateString() +
+        '</p></div>' +
+        '<div class="info-item"><h5>Pages</h5><p>' + doc.pagesCount + ' page' +
+            (doc.pagesCount > 1 ? 's' : '') + '</p></div>' +
+        '<div class="info-item"><h5>Tag</h5>' +
+            '<p><span class="tag ' + doc.tag + '">' + doc.tag + '</span></p></div>';
+
+    // Description
+    document.getElementById('modalDescription').innerHTML =
+        '<p>' + (doc.description || 'No description provided.') + '</p>';
+
+    // Preview
+    var imgEl  = document.getElementById('modalImage');
+    var iconEl = document.getElementById('modalFileIcon');
+    if (doc.is_image && doc.img) {
+        imgEl.src             = doc.img;
+        imgEl.style.transform = '';
+        imgEl.style.display   = 'block';
+        iconEl.style.display  = 'none';
+    } else {
+        imgEl.style.display   = 'none';
+        iconEl.style.display  = 'flex';
+        iconEl.querySelector('i').className = 'fas ' + doc.file_icon;
+    }
+
+    // Thumbnails
+    var strip = document.getElementById('thumbnailStrip');
+    strip.innerHTML = '';
+    if (doc.is_image && doc.img) {
+        var thumb = document.createElement('div');
+        thumb.className = 'thumbnail active';
+        thumb.innerHTML = '<img src="' + doc.img + '" alt="Page 1">';
+        strip.appendChild(thumb);
+    }
+
+    // Buttons
+    document.getElementById('downloadBtn').href = doc.downloadUrl;
+
+    document.getElementById('documentModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+// ── Delete ───────────────────────────────────────────────────────────
+document.getElementById('deleteBtn').addEventListener('click', function() {
+    if (!currentDoc) return;
+    if (confirm('Delete "' + currentDoc.name + '"? This cannot be undone.')) {
+        var form = document.getElementById('deleteForm');
+        form.action = currentDoc.deleteUrl;
+        form.submit();
+    }
+});
+
+// ── Share ────────────────────────────────────────────────────────────
+document.getElementById('shareBtn').addEventListener('click', function() {
+    if (!currentDoc) return;
+    if (navigator.share) {
+        navigator.share({ title: currentDoc.name, url: window.location.href });
+    } else {
+        navigator.clipboard.writeText(window.location.href)
+            .then(function() { alert('Link copied to clipboard!'); });
+    }
+});
+
+// ── Save Copy ────────────────────────────────────────────────────────
+document.getElementById('saveCopyBtn').addEventListener('click', function() {
+    if (!currentDoc) return;
+    window.location.href = currentDoc.downloadUrl;
+});
+
+// ── Close modal ──────────────────────────────────────────────────────
+function closeModal() {
+    document.getElementById('documentModal').classList.remove('active');
+    document.body.style.overflow = 'auto';
+}
+document.getElementById('closeModal').addEventListener('click', closeModal);
+document.getElementById('closeModal2').addEventListener('click', closeModal);
+document.getElementById('documentModal').addEventListener('click', function(e) {
+    if (e.target === document.getElementById('documentModal')) closeModal();
+});
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeModal();
+});
+
+// ── Preview modes ────────────────────────────────────────────────────
+document.querySelectorAll('.mode-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.mode-btn').forEach(function(b) {
+            b.classList.remove('active');
+        });
+        btn.classList.add('active');
+        var img = document.getElementById('modalImage');
+        if (btn.getAttribute('data-mode') === 'original') {
+            img.style.width     = 'auto';
+            img.style.height    = 'auto';
+            img.style.maxWidth  = 'none';
+            img.style.maxHeight = 'none';
+        } else {
+            img.style.width     = '100%';
+            img.style.height    = '100%';
+            img.style.maxWidth  = '100%';
+            img.style.maxHeight = '100%';
+            img.style.objectFit = 'contain';
+        }
+    });
+});
+
+// ── Zoom controls ────────────────────────────────────────────────────
+function updateZoom() {
+    document.getElementById('modalImage').style.transform =
+        'scale(' + zoomLevel + ') rotate(' + rotation + 'deg)';
+}
+document.getElementById('zoomIn').addEventListener('click', function() {
+    zoomLevel = Math.min(3, zoomLevel + 0.25); updateZoom();
+});
+document.getElementById('zoomOut').addEventListener('click', function() {
+    zoomLevel = Math.max(0.5, zoomLevel - 0.25); updateZoom();
+});
+document.getElementById('zoomReset').addEventListener('click', function() {
+    zoomLevel = 1; rotation = 0; updateZoom();
+});
+document.getElementById('rotateBtn').addEventListener('click', function() {
+    rotation += 90; updateZoom();
+});
+
+
+var passcodeAction = '{{ has_passcode|yesno:"verify,set" }}';
+var attempts = 0;
+var MAX_ATTEMPTS = 5;
+
+// Show overlay if needed
+window.addEventListener('DOMContentLoaded', function() {
+    var overlay = document.getElementById('passcodeOverlay');
+    if (overlay) {
+        var needs = '{{ needs_passcode|yesno:"true,false" }}';
+        if (needs === 'true') {
+            overlay.style.display = 'flex';
+            setTimeout(function() {
+                document.getElementById('p1').focus();
+            }, 300);
+        } else {
+            overlay.style.display = 'none';
+        }
+    }
+});
+
+function pInput(el, prevId, nextId) {
+    el.value = el.value.replace(/[^0-9]/g, '');
+    updateDots();
+    if (el.value && nextId) {
+        document.getElementById(nextId).focus();
+    }
+    var code = getCode();
+    if (code.length === 4) {
+        setTimeout(submitPasscode, 200);
+    }
+}
+
+function pBack(e, el, prevId, nextId) {
+    if (e.key === 'Backspace' && !el.value && prevId) {
+        document.getElementById(prevId).focus();
+    }
+    updateDots();
+}
+
+function updateDots() {
+    var code = getCode();
+    for (var i = 1; i <= 4; i++) {
+        var dot = document.getElementById('dot' + i);
+        if (dot) dot.classList.toggle('filled', i <= code.length);
+    }
+}
+
+function getCode() {
+    return ['p1','p2','p3','p4']
+        .map(function(id) {
+            var el = document.getElementById(id);
+            return el ? el.value : '';
+        }).join('');
+}
+
+function clearBoxes() {
+    ['p1','p2','p3','p4'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    updateDots();
+    var p1 = document.getElementById('p1');
+    if (p1) p1.focus();
+}
+
+function showMsg(text, type) {
+    var el = document.getElementById('passcodeMsg');
+    if (!el) return;
+    el.textContent = text;
+    el.className   = 'passcode-msg ' + (type === 'error' ? 'msg-error' : 'msg-success');
+}
+
+async function submitPasscode() {
+    var code = getCode();
+    if (code.length < 4) {
+        showMsg('Please enter all 4 digits.', 'error');
+        return;
+    }
+
+    var btn = document.getElementById('passcodeSubmit');
+    if (!btn || btn.disabled) return;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
+
+    try {
+        var resp = await fetch('/documents/passcode/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrf(),
+            },
+            body: JSON.stringify({
+                action: passcodeAction,
+                code:   code
+            }),
+        });
+
+        var data = await resp.json();
+
+        if (data.success) {
+            showMsg(
+                passcodeAction === 'set'
+                    ? 'Passcode set! Unlocking...'
+                    : 'Access granted!',
+                'success'
+            );
+
+            // Animate icon to unlocked
+            var icon    = document.querySelector('.passcode-icon i');
+            var iconWrap= document.querySelector('.passcode-icon');
+            if (icon)     icon.className = 'fas fa-lock-open';
+            if (iconWrap) {
+                iconWrap.style.background   = '#f0fdf4';
+                iconWrap.style.borderColor  = '#bbf7d0';
+                iconWrap.style.color        = '#16a34a';
+            }
+
+            setTimeout(function() {
+                // Hide overlay and reload page to show documents
+                document.getElementById('passcodeOverlay').style.display = 'none';
+                window.location.reload();
+            }, 800);
+
+        } else {
+            attempts++;
+            clearBoxes();
+            showMsg(data.error || 'Incorrect passcode.', 'error');
+
+            // Shake
+            var boxes = document.getElementById('passcodeBoxes');
+            if (boxes) {
+                boxes.classList.add('shake');
+                setTimeout(function() { boxes.classList.remove('shake'); }, 500);
+            }
+
+            // Show attempts
+            if (passcodeAction === 'verify') {
+                var remaining = MAX_ATTEMPTS - attempts;
+                var attEl = document.getElementById('passcodeAttempts');
+                if (attEl) {
+                    attEl.textContent = remaining > 0
+                        ? remaining + ' attempt(s) remaining'
+                        : 'Too many attempts. Redirecting...';
+                }
+                if (attempts >= MAX_ATTEMPTS) {
+                    setTimeout(function() {
+                        window.location.href = '/dashboard/';
+                    }, 2000);
+                    return;
+                }
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = passcodeAction === 'set'
+                ? '<i class="fas fa-lock"></i> Set Passcode'
+                : '<i class="fas fa-unlock"></i> Unlock Documents';
+        }
+
+    } catch (err) {
+        showMsg('Network error. Please try again.', 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-unlock"></i> Unlock Documents';
+    }
+}
+
+function getCsrf() {
+    var c = document.cookie.split(';');
+    for (var i = 0; i < c.length; i++) {
+        var x = c[i].trim();
+        if (x.startsWith('csrftoken=')) return decodeURIComponent(x.substring(10));
+    }
+    return '';
+}
+</script>
+{% include 'partials/chatbot_widget.html' %}
 </body>
-
 </html>

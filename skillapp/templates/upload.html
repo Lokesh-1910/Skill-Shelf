@@ -4,193 +4,844 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Upload Documents - Skill Shelf</title>
+    <meta
+      http-equiv="Cache-Control"
+      content="no-store, no-cache, must-revalidate, max-age=0"
+    />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <title>Upload Documents — Skill Shelf</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Serif:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="{% static 'CSS/base.css' %}" />
     <link rel="stylesheet" href="{% static 'CSS/upload.css' %}" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   </head>
   <body>
     {% include 'partials/header.html' %}
 
-    <!-- Main Content -->
-    <main class="upload-page">
-      <!-- Header -->
-      <header class="page-header">
-        <h1><i class="fas fa-upload"></i> Upload Documents</h1>
-        <p>Add new documents to your Skill Shelf library</p>
-      </header>
-
-      <!-- Upload Steps -->
-      <section class="upload-steps">
-        <h2><i class="fas fa-info-circle"></i> How to Upload Documents</h2>
-        <div class="steps">
-          <div class="step">
-            <i class="fas fa-file-import"></i>
-            <h3>1. Select Files</h3>
-            <p>Drag & drop files or click browse to select documents</p>
-          </div>
-          <div class="step">
-            <i class="fas fa-tags"></i>
-            <h3>2. Add Details</h3>
-            <p>Choose document type, add tags, and description</p>
-          </div>
-          <div class="step">
-            <i class="fas fa-cloud-upload-alt"></i>
-            <h3>3. Upload</h3>
-            <p>Documents are securely stored in your library</p>
-          </div>
+    <div class="upload-wrapper">
+      <div class="page-head">
+        <div class="page-head-left">
+          <h1><i class="fas fa-cloud-upload-alt"></i> Upload Documents</h1>
+          <p>
+            Follow the steps below to securely add documents to your library
+          </p>
         </div>
-      </section>
+        <div class="storage-pill">
+          <i class="fas fa-database"></i>
+          <span>{{ storage_used|default:"0 MB" }} of 2 GB used</span>
+        </div>
+      </div>
 
-      <!-- Upload Form -->
-      <div class="upload-form">
-        <!-- Left Side: File Selection & Details -->
-        <div class="upload-left">
-          <!-- Step 1: File Selection -->
-          <section class="upload-section">
-            <h3><i class="fas fa-file"></i> Step 1: Select Your Files</h3>
-            <div class="file-drop-area" id="dropZone">
-              <i class="fas fa-cloud-upload-alt"></i>
-              <h4>Drag & Drop Your Files Here</h4>
-              <p>or click to browse</p>
-              <button class="browse-btn" id="browseBtn">
-                <i class="fas fa-folder-open"></i> Browse Files
-              </button>
-              <p class="file-types">
-                Supports: PDF, DOCX, JPG, PNG, ZIP (Max 10MB each)
-              </p>
+      {% for message in messages %}
+      <div
+        class="flash {% if message.tags == 'error' %}flash-error{% else %}flash-success{% endif %}"
+      >
+        <i
+          class="fas {% if message.tags == 'error' %}fa-circle-exclamation{% else %}fa-circle-check{% endif %}"
+        ></i>
+        {{ message }}
+      </div>
+      {% endfor %} {% csrf_token %}
+
+      <div class="cards-stack">
+        <!-- CARD 1 -->
+        <div class="step-card active" id="card1">
+          <div class="card-header">
+            <div class="card-badge active" id="badge1">
+              <i class="fas fa-file-import"></i>
+            </div>
+            <div class="card-title-block">
+              <h2>Step 1 &mdash; Select Files</h2>
+              <p>Drag &amp; drop or browse files from your device</p>
+            </div>
+            <div class="card-status" id="status1"></div>
+          </div>
+          <div class="card-body" id="body1">
+            <div class="drop-zone" id="dropZone">
+              <div class="drop-inner">
+                <div class="drop-icon-wrap">
+                  <i class="fas fa-cloud-upload-alt"></i>
+                </div>
+                <h3>Drag &amp; Drop Files Here</h3>
+                <p>or click the button to browse</p>
+                <button type="button" class="browse-btn" id="browseBtn">
+                  <i class="fas fa-folder-open"></i> Browse Files
+                </button>
+                <div class="format-tags">
+                  <span>PDF</span><span>DOCX</span><span>JPG</span>
+                  <span>PNG</span><span>ZIP</span>
+                  <span class="note">Max 10MB each</span>
+                </div>
+              </div>
               <input
                 type="file"
                 id="fileInput"
+                name="files"
                 multiple
                 accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.zip"
                 hidden
               />
             </div>
-
-            <!-- Selected Files -->
-            <div class="selected-files">
-              <h4>Selected Files (<span id="fileCount">0</span>)</h4>
-              <div class="file-list" id="fileList">
-                <div class="no-files">
-                  <i class="fas fa-file"></i>
-                  <p>No files selected yet</p>
-                </div>
+            <div class="file-list-box" id="fileListBox" style="display: none">
+              <div class="flb-header">
+                <span class="flb-title">
+                  <i class="fas fa-paperclip"></i> Selected files
+                  <span class="count-badge" id="fileCount">0</span>
+                </span>
+                <button type="button" class="txt-danger-btn" id="clearFilesBtn">
+                  <i class="fas fa-trash"></i> Clear all
+                </button>
               </div>
+              <div class="file-list" id="fileList"></div>
             </div>
-          </section>
-
-          <!-- Step 2: Document Details -->
-          <section class="upload-section">
-            <h3><i class="fas fa-edit"></i> Step 2: Document Details</h3>
-
-            <div class="form-group">
-              <label><i class="fas fa-tag"></i> Document Type</label>
-              <select id="docType">
-                <option value="">Select Document Type</option>
-                <option value="academic">Academic</option>
-                <option value="certificate">Certificate</option>
-                <option value="id">ID Document</option>
-                <option value="marksheet">Marksheet</option>
-              </select>
+            <div class="card-footer-row">
+              <div></div>
+              <button type="button" class="btn-next" id="toCard2" disabled>
+                Continue to Details <i class="fas fa-arrow-right"></i>
+              </button>
             </div>
-
-            <div class="form-group">
-              <label><i class="fas fa-hashtag"></i> Tags</label>
-              <input
-                type="text"
-                id="tags"
-                placeholder="Type tags and press Enter..."
-              />
-              <small>Separate multiple tags with commas</small>
-            </div>
-
-            <div class="form-group">
-              <label><i class="fas fa-align-left"></i> Description</label>
-              <textarea
-                id="description"
-                placeholder="Add notes or descriptions..."
-              ></textarea>
-            </div>
-          </section>
+          </div>
         </div>
 
-        <!-- Right Side: Upload Progress -->
-        <div class="upload-right">
-          <section class="upload-section">
-            <h3><i class="fas fa-chart-line"></i> Step 3: Upload Progress</h3>
+        <div class="connector" id="conn1">
+          <div class="conn-line"></div>
+          <div class="conn-dot"></div>
+        </div>
 
-            <!-- Upload Status -->
-            <div class="upload-status">
-              <div class="status-header">
-                <h4>Upload Status</h4>
-                <span id="progressCount">0 of 0 files processed</span>
-              </div>
-
-              <div class="status-stats">
-                <div class="stat success">
-                  <i class="fas fa-check-circle"></i>
-                  <span>Successful: <strong id="successCount">0</strong></span>
+        <!-- CARD 2 -->
+        <div class="step-card locked" id="card2">
+          <div class="card-header">
+            <div class="card-badge locked" id="badge2">
+              <i class="fas fa-lock"></i>
+            </div>
+            <div class="card-title-block">
+              <h2>Step 2 &mdash; Document Details</h2>
+              <p>Categorise and describe your documents</p>
+            </div>
+            <div class="card-status" id="status2">
+              <span class="lock-label"
+                ><i class="fas fa-lock"></i> Complete Step 1 first</span
+              >
+            </div>
+          </div>
+          <div class="card-body locked-body" id="body2">
+            <div class="locked-overlay" id="overlay2">
+              <i class="fas fa-lock"></i>
+              <p>Select files in Step 1 to unlock</p>
+            </div>
+            <div class="details-form" id="detailsForm" style="display: none">
+              <div class="form-grid">
+                <div class="field">
+                  <label
+                    ><i class="fas fa-heading"></i> Document Title
+                    <span class="opt">Optional</span></label
+                  >
+                  <input
+                    type="text"
+                    id="docTitle"
+                    placeholder="e.g. Semester 5 Marksheet"
+                  />
+                  <small>Leave blank to use filename</small>
                 </div>
-                <div class="stat progress">
-                  <i class="fas fa-spinner"></i>
-                  <span
-                    >In Progress:
-                    <strong id="progressCountText">0</strong></span
+                <!-- Category Field - Type or Select -->
+                <div class="field">
+                  <label
+                    ><i class="fas fa-folder"></i> Category
+                    <span class="req">*</span></label
+                  >
+
+                  <div class="custom-select-wrapper">
+                    <input
+                      type="text"
+                      id="category_input"
+                      class="form-input"
+                      placeholder="Type or select category (e.g. Projects, Resumes...)"
+                      autocomplete="off"
+                    />
+
+                    <!-- Hidden field sent to Django -->
+                    <input
+                      type="hidden"
+                      id="docCategory"
+                      name="category"
+                      required
+                    />
+
+                    <div class="select-dropdown" id="category_dropdown">
+                      {% for slug, label in categories %}
+                      <div class="dropdown-item" data-value="{{ slug }}">
+                        {{ label }}
+                      </div>
+                      {% endfor %}
+                    </div>
+                  </div>
+                  <small
+                    >You can type a new category or choose from the list</small
                   >
                 </div>
-                <div class="stat failed">
-                  <i class="fas fa-times-circle"></i>
-                  <span>Failed: <strong id="failedCount">0</strong></span>
+
+                <!-- Tag Field - Type or Select (as requested) -->
+                <div class="field">
+                  <label><i class="fas fa-hashtag"></i> Tag</label>
+
+                  <div class="custom-select-wrapper">
+                    <input
+                      type="text"
+                      id="tag_input"
+                      class="form-input"
+                      placeholder="Type or select tag (e.g. Important, Official...)"
+                      autocomplete="off"
+                    />
+
+                    <!-- Hidden field sent to Django -->
+                    <input
+                      type="hidden"
+                      id="docTag"
+                      name="tags"
+                      value="other"
+                    />
+
+                    <div class="select-dropdown" id="tag_dropdown">
+                      {% for value, label in tag_choices %}
+                      <div class="dropdown-item" data-value="{{ value }}">
+                        {{ label }}
+                      </div>
+                      {% endfor %}
+                    </div>
+                  </div>
+                  <small>Helps you filter documents later</small>
+                </div>
+                <div class="field field-full">
+                  <label
+                    ><i class="fas fa-align-left"></i> Description
+                    <span class="opt">Optional</span></label
+                  >
+                  <textarea
+                    id="description"
+                    placeholder="Add notes about this document..."
+                  ></textarea>
                 </div>
               </div>
+              <div class="card-footer-row">
+                <button type="button" class="btn-back" id="toCard1Back">
+                  <i class="fas fa-arrow-left"></i> Back
+                </button>
+                <button type="button" class="btn-next" id="toCard3">
+                  Start Upload <i class="fas fa-cloud-upload-alt"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
 
-              <!-- Upload Queue -->
+        <div class="connector" id="conn2">
+          <div class="conn-line"></div>
+          <div class="conn-dot"></div>
+        </div>
+
+        <!-- CARD 3 -->
+        <div class="step-card locked" id="card3">
+          <div class="card-header">
+            <div class="card-badge locked" id="badge3">
+              <i class="fas fa-lock"></i>
+            </div>
+            <div class="card-title-block">
+              <h2>Step 3 &mdash; Upload Progress</h2>
+              <p>Your files will be securely uploaded here</p>
+            </div>
+            <div class="card-status" id="status3">
+              <span class="lock-label"
+                ><i class="fas fa-lock"></i> Complete Step 2 first</span
+              >
+            </div>
+          </div>
+          <div class="card-body locked-body" id="body3">
+            <div class="locked-overlay" id="overlay3">
+              <i class="fas fa-lock"></i>
+              <p>Fill in document details in Step 2 to unlock</p>
+            </div>
+            <div
+              class="progress-content"
+              id="progressContent"
+              style="display: none"
+            >
+              <div class="up-stats">
+                <div class="up-stat green">
+                  <div class="up-stat-icon">
+                    <i class="fas fa-check-circle"></i>
+                  </div>
+                  <div>
+                    <strong id="successCount">0</strong><span>Successful</span>
+                  </div>
+                </div>
+                <div class="up-stat blue">
+                  <div class="up-stat-icon"><i class="fas fa-spinner"></i></div>
+                  <div>
+                    <strong id="inProgressCount">0</strong
+                    ><span>In Progress</span>
+                  </div>
+                </div>
+                <div class="up-stat red">
+                  <div class="up-stat-icon">
+                    <i class="fas fa-times-circle"></i>
+                  </div>
+                  <div>
+                    <strong id="failedCount">0</strong><span>Failed</span>
+                  </div>
+                </div>
+                <div class="up-stat gray">
+                  <div class="up-stat-icon">
+                    <i class="fas fa-layer-group"></i>
+                  </div>
+                  <div>
+                    <strong id="totalCount">0</strong><span>Total</span>
+                  </div>
+                </div>
+              </div>
+              <div class="overall-bar-block">
+                <div class="bar-meta">
+                  <span id="barLabel">Preparing...</span>
+                  <span id="barPct">0%</span>
+                </div>
+                <div class="bar-track">
+                  <div class="bar-fill" id="overallBar" style="width: 0%"></div>
+                </div>
+              </div>
               <div class="upload-queue" id="uploadQueue">
-                <div class="no-uploads">
+                <div class="queue-placeholder">
                   <i class="fas fa-upload"></i>
-                  <p>No uploads in progress</p>
-                  <small>Selected files will appear here</small>
+                  <p>Files will appear here during upload</p>
                 </div>
               </div>
-
-              <!-- Upload Actions -->
-              <div class="upload-actions">
-                <button class="btn clear-btn" id="clearBtn">
-                  <i class="fas fa-trash"></i> Clear Selection
+              <div id="uploadResult"></div>
+              <div class="card-footer-row">
+                <button
+                  type="button"
+                  class="btn-back"
+                  id="toCard2Back"
+                  style="display: none"
+                >
+                  <i class="fas fa-arrow-left"></i> Back
                 </button>
-                <button class="btn upload-btn" id="uploadBtn">
-                  <i class="fas fa-cloud-upload-alt"></i> Start Upload
-                </button>
+                <div></div>
               </div>
             </div>
-
-            <!-- Storage Info -->
-            <div class="storage-info">
-              <h4><i class="fas fa-database"></i> Storage Information</h4>
-              <div class="storage-bar">
-                <div class="storage-fill" style="width: 60%"></div>
-              </div>
-              <p>1.2 GB used of 2 GB <span>40% free space</span></p>
-            </div>
-
-            <!-- Upload Tips -->
-            <div class="upload-tips">
-              <h4><i class="fas fa-lightbulb"></i> Upload Tips</h4>
-              <ul>
-                <li>Keep file names descriptive</li>
-                <li>Add relevant tags to categorize</li>
-                <li>Max file size: 10MB per document</li>
-                <li>Upload multiple files at once</li>
-              </ul>
-            </div>
-          </section>
+          </div>
         </div>
       </div>
-    </main>
+    </div>
 
     {% include 'partials/footer.html' %}
 
-    <script src="{% static 'JS/upload.js' %}"></script>
+    <script>
+      var selectedFiles = [],
+        MAX_SIZE = 10 * 1024 * 1024;
+      var VALID_EXTS = [
+        ".pdf",
+        ".doc",
+        ".docx",
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".zip",
+      ];
+      var AJAX_URL = "/upload/ajax/",
+        DOCS_URL = "/documents/";
+
+      var dropZone = document.getElementById("dropZone");
+      var fileInput = document.getElementById("fileInput");
+      var fileList = document.getElementById("fileList");
+      var fileCount = document.getElementById("fileCount");
+      var fileListBox = document.getElementById("fileListBox");
+      var uploadQueue = document.getElementById("uploadQueue");
+
+      document
+        .getElementById("browseBtn")
+        .addEventListener("click", function () {
+          fileInput.click();
+        });
+      fileInput.addEventListener("change", function () {
+        handleFiles(this.files);
+      });
+      dropZone.addEventListener("dragover", function (e) {
+        e.preventDefault();
+        dropZone.classList.add("dragover");
+      });
+      dropZone.addEventListener("dragleave", function () {
+        dropZone.classList.remove("dragover");
+      });
+      dropZone.addEventListener("drop", function (e) {
+        e.preventDefault();
+        dropZone.classList.remove("dragover");
+        handleFiles(e.dataTransfer.files);
+      });
+      document
+        .getElementById("clearFilesBtn")
+        .addEventListener("click", function () {
+          selectedFiles = [];
+          fileInput.value = "";
+          renderFileList();
+          showToast("Selection cleared", "info");
+        });
+
+      document.getElementById("toCard2").addEventListener("click", function () {
+        if (!selectedFiles.length) return;
+        markDone(1);
+        unlockCard(2);
+      });
+
+      document
+        .getElementById("toCard1Back")
+        .addEventListener("click", function () {
+          relockCard(2, "Complete Step 1 first", "fa-tags");
+          markActive(1);
+          document.getElementById("conn1").classList.remove("active");
+          scrollTo("card1");
+        });
+
+      document.getElementById("toCard3").addEventListener("click", function () {
+        var cat = document.getElementById("docCategory").value;
+        if (!cat) {
+          showToast("Please select a document category", "error");
+          document.getElementById("docCategory").focus();
+          return;
+        }
+        markDone(2);
+        unlockCard(3);
+        setTimeout(startUpload, 400);
+      });
+
+      document
+        .getElementById("toCard2Back")
+        .addEventListener("click", function () {
+          relockCard(3, "Complete Step 2 first", "fa-cloud-upload-alt");
+          markActive(2);
+          document.getElementById("conn2").classList.remove("active");
+          uploadQueue.innerHTML =
+            '<div class="queue-placeholder"><i class="fas fa-upload"></i><p>Files will appear here during upload</p></div>';
+          resetStats();
+          scrollTo("card2");
+        });
+
+      function unlockCard(n) {
+        var icons = ["", "fa-file-import", "fa-tags", "fa-cloud-upload-alt"];
+        var card = document.getElementById("card" + n);
+        var badge = document.getElementById("badge" + n);
+        var body = document.getElementById("body" + n);
+        var status = document.getElementById("status" + n);
+        var overlay = document.getElementById("overlay" + n);
+        var conn = document.getElementById("conn" + (n - 1));
+
+        card.classList.remove("locked");
+        card.classList.add("active");
+        badge.classList.remove("locked");
+        badge.classList.add("active");
+        badge.innerHTML = '<i class="fas ' + icons[n] + '"></i>';
+        body.classList.remove("locked-body");
+        if (overlay) overlay.style.display = "none";
+        status.innerHTML = "";
+        if (conn) conn.classList.add("active");
+
+        // Show inner form/content
+        var form = document.getElementById("detailsForm");
+        if (form && n === 2) form.style.display = "";
+        var prog = document.getElementById("progressContent");
+        if (prog && n === 3) prog.style.display = "";
+
+        scrollTo("card" + n);
+      }
+
+      function markDone(n) {
+        var icons = ["", "fa-file-import", "fa-tags", "fa-cloud-upload-alt"];
+        var card = document.getElementById("card" + n);
+        var badge = document.getElementById("badge" + n);
+        var status = document.getElementById("status" + n);
+        var body = document.getElementById("body" + n);
+        card.classList.remove("active");
+        card.classList.add("done");
+        badge.classList.remove("active");
+        badge.classList.add("done");
+        badge.innerHTML = '<i class="fas fa-check"></i>';
+        status.innerHTML =
+          '<span class="done-label"><i class="fas fa-check-circle"></i> Done</span>';
+        body.classList.add("collapsed");
+      }
+
+      function markActive(n) {
+        var icons = ["", "fa-file-import", "fa-tags", "fa-cloud-upload-alt"];
+        var card = document.getElementById("card" + n);
+        var badge = document.getElementById("badge" + n);
+        var body = document.getElementById("body" + n);
+        var status = document.getElementById("status" + n);
+        card.classList.remove("done");
+        card.classList.add("active");
+        badge.classList.remove("done");
+        badge.classList.add("active");
+        badge.innerHTML = '<i class="fas ' + icons[n] + '"></i>';
+        body.classList.remove("collapsed");
+        status.innerHTML = "";
+      }
+
+      function relockCard(n, msg, icon) {
+        var card = document.getElementById("card" + n);
+        var badge = document.getElementById("badge" + n);
+        var body = document.getElementById("body" + n);
+        var status = document.getElementById("status" + n);
+        var overlay = document.getElementById("overlay" + n);
+        card.classList.remove("done", "active");
+        card.classList.add("locked");
+        badge.classList.remove("done", "active");
+        badge.classList.add("locked");
+        badge.innerHTML = '<i class="fas fa-lock"></i>';
+        body.classList.add("locked-body");
+        body.classList.remove("collapsed");
+        if (overlay) overlay.style.display = "";
+        status.innerHTML =
+          '<span class="lock-label"><i class="fas fa-lock"></i> ' +
+          msg +
+          "</span>";
+        var form = document.getElementById("detailsForm");
+        if (form && n === 2) form.style.display = "none";
+        var prog = document.getElementById("progressContent");
+        if (prog && n === 3) prog.style.display = "none";
+      }
+
+      function scrollTo(id) {
+        setTimeout(function () {
+          document
+            .getElementById(id)
+            .scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 100);
+      }
+
+      function handleFiles(list) {
+        var added = 0;
+        for (var i = 0; i < list.length; i++) {
+          var f = list[i];
+          if (f.size > MAX_SIZE) {
+            showToast(f.name + " exceeds 10MB", "error");
+            continue;
+          }
+          var ext = "." + f.name.split(".").pop().toLowerCase();
+          if (!VALID_EXTS.includes(ext)) {
+            showToast(f.name + " — unsupported format", "error");
+            continue;
+          }
+          selectedFiles.push({
+            id: Date.now() + i,
+            file: f,
+            name: f.name,
+            size: fmtSize(f.size),
+          });
+          added++;
+        }
+        renderFileList();
+        if (added > 0) showToast(added + " file(s) added", "success");
+      }
+
+      function renderFileList() {
+        fileCount.textContent = selectedFiles.length;
+        document.getElementById("toCard2").disabled =
+          selectedFiles.length === 0;
+        fileListBox.style.display =
+          selectedFiles.length === 0 ? "none" : "block";
+        fileList.innerHTML = selectedFiles
+          .map(function (f) {
+            var ext = f.name.split(".").pop().toLowerCase();
+            return (
+              '<div class="file-row"><div class="file-row-l">' +
+              '<span class="etag ' +
+              ext +
+              '">' +
+              ext.toUpperCase() +
+              "</span>" +
+              '<div><div class="fname">' +
+              f.name +
+              '</div><div class="fsize">' +
+              f.size +
+              "</div></div>" +
+              '</div><button class="rm-btn" data-id="' +
+              f.id +
+              '"><i class="fas fa-times"></i></button></div>'
+            );
+          })
+          .join("");
+        fileList.querySelectorAll(".rm-btn").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            var id = parseFloat(btn.getAttribute("data-id"));
+            selectedFiles = selectedFiles.filter(function (f) {
+              return f.id !== id;
+            });
+            renderFileList();
+          });
+        });
+      }
+
+      async function startUpload() {
+        var category = document.getElementById("docCategory").value;
+        var tags = document.getElementById("docTag").value;
+        var description = document.getElementById("description").value;
+        var title = document.getElementById("docTitle").value;
+        var total = selectedFiles.length,
+          ok = 0,
+          fail = 0;
+        var csrf = getCSRF();
+
+        document.getElementById("totalCount").textContent = total;
+        document.getElementById("toCard2Back").style.display = "inline-flex";
+        uploadQueue.innerHTML = "";
+        resetStats();
+        var badge3 = document.getElementById("badge3");
+        badge3.classList.remove("done");
+        badge3.classList.add("active");
+        badge3.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+        for (var i = 0; i < selectedFiles.length; i++) {
+          var fo = selectedFiles[i];
+          var ext = fo.name.split(".").pop().toLowerCase();
+          var item = document.createElement("div");
+          item.className = "queue-row";
+          item.innerHTML =
+            '<div class="queue-row-l"><span class="etag ' +
+            ext +
+            ' sm">' +
+            ext.toUpperCase() +
+            "</span>" +
+            '<div><div class="fname">' +
+            fo.name +
+            "</div>" +
+            '<div class="qbar-wrap"><div class="qbar" style="width:0%"></div></div>' +
+            '</div></div><span class="qst uploading">Uploading...</span>';
+          uploadQueue.appendChild(item);
+
+          var bar = item.querySelector(".qbar"),
+            st = item.querySelector(".qst"),
+            pct = 0;
+          var ticker = setInterval(function () {
+            pct = Math.min(80, pct + Math.random() * 15);
+            bar.style.width = pct + "%";
+          }, 180);
+
+          try {
+            var fd = new FormData();
+            fd.append("files", fo.file);
+            fd.append("category", category);
+            fd.append("tags", tags);
+            fd.append("description", description);
+            fd.append("title", title);
+            fd.append("csrfmiddlewaretoken", csrf);
+            var resp = await fetch(AJAX_URL, { method: "POST", body: fd });
+            clearInterval(ticker);
+            var data = await resp.json();
+            if (
+              resp.ok &&
+              data.results &&
+              data.results[0].status === "success"
+            ) {
+              bar.style.width = "100%";
+              bar.style.background = "#16a34a";
+              st.textContent = "✓ Done";
+              st.className = "qst done";
+              ok++;
+            } else {
+              throw new Error(
+                (data.results && data.results[0].error) || "Failed",
+              );
+            }
+          } catch (err) {
+            clearInterval(ticker);
+            bar.style.width = "100%";
+            bar.style.background = "#dc2626";
+            st.textContent = "✗ Failed";
+            st.className = "qst failed";
+            fail++;
+          }
+
+          document.getElementById("successCount").textContent = ok;
+          document.getElementById("inProgressCount").textContent =
+            total - ok - fail;
+          document.getElementById("failedCount").textContent = fail;
+          var p = Math.round(((ok + fail) / total) * 100);
+          document.getElementById("overallBar").style.width = p + "%";
+          document.getElementById("barPct").textContent = p + "%";
+          document.getElementById("barLabel").textContent =
+            ok + fail + " of " + total + " files";
+        }
+
+        document.getElementById("toCard2Back").style.display = "none";
+        var r = document.getElementById("uploadResult");
+        if (ok === total) {
+          markDone(3);
+          r.innerHTML =
+            '<div class="res-ok"><i class="fas fa-check-circle"></i> ' +
+            ok +
+            " document(s) uploaded! Redirecting...</div>";
+          showToast(ok + " file(s) uploaded!", "success");
+          setTimeout(function () {
+            window.location.href = DOCS_URL;
+          }, 2000);
+        } else if (ok > 0) {
+          r.innerHTML =
+            '<div class="res-warn"><i class="fas fa-exclamation-triangle"></i> ' +
+            ok +
+            " uploaded, " +
+            fail +
+            " failed.</div>";
+          setTimeout(function () {
+            window.location.href = DOCS_URL;
+          }, 3000);
+        } else {
+          badge3.innerHTML = '<i class="fas fa-times"></i>';
+          r.innerHTML =
+            '<div class="res-err"><i class="fas fa-times-circle"></i> All uploads failed. Please try again.</div>';
+          document.getElementById("toCard2Back").style.display = "inline-flex";
+        }
+      }
+
+      function resetStats() {
+        [
+          "successCount",
+          "inProgressCount",
+          "failedCount",
+          "totalCount",
+        ].forEach(function (id) {
+          document.getElementById(id).textContent = "0";
+        });
+        document.getElementById("overallBar").style.width = "0%";
+        document.getElementById("barPct").textContent = "0%";
+        document.getElementById("barLabel").textContent = "Preparing...";
+        document.getElementById("uploadResult").innerHTML = "";
+      }
+
+      function getCSRF() {
+        var c = document.cookie.split(";");
+        for (var i = 0; i < c.length; i++) {
+          var x = c[i].trim();
+          if (x.startsWith("csrftoken="))
+            return decodeURIComponent(x.substring(10));
+        }
+        var el = document.querySelector("[name=csrfmiddlewaretoken]");
+        return el ? el.value : "";
+      }
+
+      function fmtSize(b) {
+        if (b < 1024) return b + " B";
+        if (b < 1048576) return (b / 1024).toFixed(1) + " KB";
+        return (b / 1048576).toFixed(1) + " MB";
+      }
+
+      function showToast(text, type) {
+        var old = document.querySelector(".up-toast");
+        if (old) old.remove();
+        var bg = { success: "#16a34a", error: "#dc2626", info: "#2563eb" };
+        var ic = {
+          success: "fa-check-circle",
+          error: "fa-circle-exclamation",
+          info: "fa-info-circle",
+        };
+        var el = document.createElement("div");
+        el.className = "up-toast";
+        el.style.cssText =
+          "position:fixed;top:20px;right:20px;z-index:9999;padding:11px 16px;" +
+          "border-radius:8px;color:#fff;font-size:13px;font-weight:500;" +
+          "box-shadow:0 4px 14px rgba(0,0,0,.12);display:flex;align-items:center;gap:8px;" +
+          'font-family:"IBM Plex Sans",sans-serif;background:' +
+          (bg[type] || bg.info) +
+          ";animation:_tin .25s ease;";
+        el.innerHTML =
+          '<i class="fas ' + (ic[type] || ic.info) + '"></i>' + text;
+        document.body.appendChild(el);
+        setTimeout(function () {
+          el.style.opacity = "0";
+          el.style.transition = "opacity .3s";
+          setTimeout(function () {
+            if (el.parentNode) el.remove();
+          }, 300);
+        }, 3500);
+      }
+      (function () {
+        var s = document.createElement("style");
+        s.textContent =
+          "@keyframes _tin{from{transform:translateX(110%);opacity:0}to{transform:translateX(0);opacity:1}}";
+        document.head.appendChild(s);
+      })();
+
+      document.addEventListener("DOMContentLoaded", function () {
+        // === Category ===
+        const catInput = document.getElementById("category_input");
+        const catHidden = document.getElementById("docCategory");
+        const catDropdown = document.getElementById("category_dropdown");
+        const catItems = catDropdown.querySelectorAll(".dropdown-item");
+
+        // === Tag ===
+        const tagInput = document.getElementById("tag_input");
+        const tagHidden = document.getElementById("docTag");
+        const tagDropdown = document.getElementById("tag_dropdown");
+        const tagItems = tagDropdown.querySelectorAll(".dropdown-item");
+
+        function setupDropdown(input, hiddenInput, dropdown, items) {
+          input.addEventListener("focus", () => dropdown.classList.add("show"));
+
+          input.addEventListener("input", function () {
+            const search = this.value.toLowerCase().trim();
+            items.forEach((item) => {
+              item.style.display = item.textContent
+                .toLowerCase()
+                .includes(search)
+                ? "block"
+                : "none";
+            });
+            dropdown.classList.add("show");
+          });
+
+          items.forEach((item) => {
+            item.addEventListener("click", function () {
+              input.value = this.textContent.trim();
+              hiddenInput.value = this.getAttribute("data-value");
+              dropdown.classList.remove("show");
+            });
+          });
+
+          input.addEventListener("blur", function () {
+            setTimeout(() => {
+              if (input.value.trim() !== "") {
+                // For custom values, convert to lowercase with underscores
+                hiddenInput.value = input.value
+                  .trim()
+                  .toLowerCase()
+                  .replace(/\s+/g, "_");
+              }
+              dropdown.classList.remove("show");
+            }, 200);
+          });
+        }
+
+        // Initialize both
+        setupDropdown(catInput, catHidden, catDropdown, catItems);
+        setupDropdown(tagInput, tagHidden, tagDropdown, tagItems);
+
+        // Close dropdowns when clicking outside
+        document.addEventListener("click", function (e) {
+          if (!e.target.closest(".custom-select-wrapper")) {
+            catDropdown.classList.remove("show");
+            tagDropdown.classList.remove("show");
+          }
+        });
+
+        // Escape key support
+        document.addEventListener("keydown", (e) => {
+          if (e.key === "Escape") {
+            catDropdown.classList.remove("show");
+            tagDropdown.classList.remove("show");
+          }
+        });
+      });
+    </script>
   </body>
 </html>

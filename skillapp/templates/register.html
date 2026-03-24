@@ -1,74 +1,284 @@
 {% load static %}
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Skill Shelf - Sign Up</title>
+    <title>Skill Shelf — Create Account</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Serif:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'CSS/register.css' %}">
 </head>
-
 <body>
-    <div class="about">
-        <div class="about1">
-            <h1 class="head1">Create Your Skill Shelf Account</h1><br><br>
-            
-            <form class="form1" action="">
-                <label for="name">Full Name</label>
-                <input type="text" id="name" placeholder="John Doe">
-                <label for="email">Email Address</label>
-                <input type="email" id="email" placeholder="john.doe@example.com"><br>
-                <label for="password">Password</label>
-                <input type="password" id="password" placeholder="Enter your password"><br>
 
-                <label for="confirm">Confirm Password</label>
-                <input type="password" id="confirm" placeholder="Confirm your password"><br>
+<div class="auth-page">
 
-                <label for="student">Student ID (Optional)</label>
-                <input type="text" id="student" placeholder="S12345678">
-                <div class="box">
-                    <input type="checkbox" id="terms">
-                    <label class="terms1" for="terms">I accept the <a href="../HTML/terms.html">terms and conditions</a></label>
-                </div>
-                <button type="submit">Sign Up</button>
-                <p class="login-link">
-                    Already have an account?
-                    <a href="/login/">Log in</a>
-                </p>
-            </form>
-            <hr>
-            <div class="home">
-                <h3>Why Skill Shelf?</h3>
+    <!-- ── LEFT PANEL ── -->
+    <div class="left-panel">
+        <div class="left-inner">
 
-                <div class="feature">
-                    <span>✔</span>
-                    <p>
-                        <strong>Secure Document Storage:</strong>
-                        Keep all your academic records safe and sound.
-                    </p>
-                </div>
-                <div class="feature">
-                    <span>✔</span>
-                    <p>
-                        <strong>Easy Organization:</strong>
-                        Categorize and find documents with ease.
-                    </p>
-                </div>
+            <a href="/" class="brand">
+                <i class="fa-solid fa-hexagon"></i>
+                <span>Skill Shelf</span>
+            </a>
 
-                <div class="feature">
-                    <span>✔</span>
-                    <p>
-                        <strong>Anytime, Anywhere Access:</strong>
-                        Retrieve your documents from any device.
-                    </p>
-                </div>
-
+            <div class="left-hero">
+                <h2>Join Thousands<br>of Students<br>Today.</h2>
+                <p>Create your free account and start managing your academic documents securely with AI-powered assistance.</p>
             </div>
-            
+
+            <div class="feature-pills">
+                <div class="pill"><i class="fas fa-robot"></i> AI Assistant</div>
+                <div class="pill"><i class="fas fa-shield-halved"></i> Email Verified</div>
+                <div class="pill"><i class="fas fa-cloud"></i> Cloud Storage</div>
+                <div class="pill"><i class="fas fa-lock"></i> Encrypted</div>
+            </div>
+
+            <div class="why-list">
+                <div class="why-item">
+                    <div class="why-icon"><i class="fas fa-file-shield"></i></div>
+                    <div>
+                        <strong>Secure Document Storage</strong>
+                        <p>Keep all your academic records safe and encrypted.</p>
+                    </div>
+                </div>
+                <div class="why-item">
+                    <div class="why-icon"><i class="fas fa-folder-open"></i></div>
+                    <div>
+                        <strong>Easy Organization</strong>
+                        <p>Categorize and find documents with ease.</p>
+                    </div>
+                </div>
+                <div class="why-item">
+                    <div class="why-icon"><i class="fas fa-mobile-screen"></i></div>
+                    <div>
+                        <strong>Anytime, Anywhere</strong>
+                        <p>Retrieve your documents from any device.</p>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 
-</body>
+    <!-- ── RIGHT PANEL ── -->
+    <div class="right-panel">
+        <div class="right-inner">
 
+            <!-- ── STEP 1: REGISTER FORM ── -->
+            {% if not step %}
+            <div class="form-header">
+                <div class="form-logo">
+                    <i class="fas fa-user-plus"></i>
+                </div>
+                <h1>Create Account</h1>
+                <p>Join Skill Shelf — it's free forever</p>
+            </div>
+
+            {% if messages %}
+                {% for message in messages %}
+                <div class="alert {% if message.tags == 'error' %}alert-error{% else %}alert-success{% endif %}">
+                    <i class="fas {% if message.tags == 'error' %}fa-circle-exclamation{% else %}fa-circle-check{% endif %}"></i>
+                    {{ message }}
+                </div>
+                {% endfor %}
+            {% endif %}
+
+            <form method="POST" action="{% url 'register' %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="send_otp">
+
+                <div class="form-row">
+                    <div class="field-group">
+                        <label>Full Name</label>
+                        <div class="input-box">
+                            <i class="fas fa-user input-icon"></i>
+                            <input type="text" name="name"
+                                   placeholder="John Doe"
+                                   value="{{ request.POST.name }}" required>
+                        </div>
+                    </div>
+                    <div class="field-group">
+                        <label>Student ID <span class="optional">(Optional)</span></label>
+                        <div class="input-box">
+                            <i class="fas fa-id-card input-icon"></i>
+                            <input type="text" name="student"
+                                   placeholder="S12345678"
+                                   value="{{ request.POST.student }}">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="field-group">
+                    <label>Email Address</label>
+                    <div class="input-box">
+                        <i class="fas fa-envelope input-icon"></i>
+                        <input type="email" name="email"
+                               placeholder="john.doe@example.com"
+                               value="{{ request.POST.email }}" required>
+                    </div>
+                    <p class="field-hint">
+                        <i class="fas fa-info-circle"></i>
+                        A verification OTP will be sent to this email.
+                    </p>
+                </div>
+
+                <div class="form-row">
+                    <div class="field-group">
+                        <label>Password</label>
+                        <div class="input-box">
+                            <i class="fas fa-lock input-icon"></i>
+                            <input type="password" name="password"
+                                   id="pw1"
+                                   placeholder="Min. 8 characters" required>
+                            <button type="button" class="eye-btn" onclick="togglePw('pw1','eye1')">
+                                <i class="fas fa-eye" id="eye1"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="field-group">
+                        <label>Confirm Password</label>
+                        <div class="input-box">
+                            <i class="fas fa-lock input-icon"></i>
+                            <input type="password" name="confirm"
+                                   id="pw2"
+                                   placeholder="Repeat password" required>
+                            <button type="button" class="eye-btn" onclick="togglePw('pw2','eye2')">
+                                <i class="fas fa-eye" id="eye2"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="terms-row">
+                    <input type="checkbox" id="terms" required>
+                    <label for="terms">
+                        I accept the <a href="#">Terms of Service</a> and
+                        <a href="#">Privacy Policy</a>
+                    </label>
+                </div>
+
+                <button type="submit" class="submit-btn">
+                    Send Verification OTP <i class="fas fa-paper-plane"></i>
+                </button>
+            </form>
+
+            <div class="form-footer">
+                Already have an account?
+                <a href="{% url 'login' %}">Sign in</a>
+            </div>
+            {% endif %}
+
+            <!-- ── STEP 2: OTP VERIFICATION ── -->
+            {% if step == 'verify' %}
+            <div class="form-header">
+                <div class="form-logo verify-logo">
+                    <i class="fas fa-envelope-open-text"></i>
+                </div>
+                <h1>Verify Your Email</h1>
+                <p>Almost there! Enter the OTP we sent you.</p>
+            </div>
+
+            <div class="otp-sent-info">
+                <p>OTP sent to</p>
+                <strong>{{ email }}</strong>
+                <span>Check your inbox and spam folder</span>
+            </div>
+
+            {% if messages %}
+                {% for message in messages %}
+                <div class="alert {% if message.tags == 'error' %}alert-error{% else %}alert-success{% endif %}">
+                    <i class="fas {% if message.tags == 'error' %}fa-circle-exclamation{% else %}fa-circle-check{% endif %}"></i>
+                    {{ message }}
+                </div>
+                {% endfor %}
+            {% endif %}
+
+            <form method="POST" action="{% url 'register' %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="verify_otp">
+                <input type="hidden" name="otp" id="otp-hidden">
+
+                <div class="otp-boxes">
+                    <input type="text" maxlength="1" class="otp-cell" id="r1"
+                           oninput="rotpInput(this,null,'r2')"
+                           onkeydown="rotpBack(event,this,null,'r2')">
+                    <input type="text" maxlength="1" class="otp-cell" id="r2"
+                           oninput="rotpInput(this,'r1','r3')"
+                           onkeydown="rotpBack(event,this,'r1','r3')">
+                    <input type="text" maxlength="1" class="otp-cell" id="r3"
+                           oninput="rotpInput(this,'r2','r4')"
+                           onkeydown="rotpBack(event,this,'r2','r4')">
+                    <input type="text" maxlength="1" class="otp-cell" id="r4"
+                           oninput="rotpInput(this,'r3','r5')"
+                           onkeydown="rotpBack(event,this,'r3','r5')">
+                    <input type="text" maxlength="1" class="otp-cell" id="r5"
+                           oninput="rotpInput(this,'r4','r6')"
+                           onkeydown="rotpBack(event,this,'r4','r6')">
+                    <input type="text" maxlength="1" class="otp-cell" id="r6"
+                           oninput="rotpInput(this,'r5',null)"
+                           onkeydown="rotpBack(event,this,'r5',null)">
+                </div>
+
+                <button type="submit" class="submit-btn" onclick="return combineOTP()">
+                    Verify &amp; Create Account <i class="fas fa-check-circle"></i>
+                </button>
+            </form>
+
+            <form method="POST" action="{% url 'register' %}" style="margin-top:14px;">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="resend_otp">
+                <div class="resend-row">
+                    Didn't receive it?
+                    <button type="submit" class="resend-btn">Resend OTP</button>
+                </div>
+            </form>
+
+            <div class="form-footer" style="margin-top:16px;">
+                <a href="{% url 'register' %}" style="color:#64748b;">
+                    <i class="fas fa-arrow-left"></i> Start over
+                </a>
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+</div>
+
+<script>
+    function togglePw(fieldId, iconId) {
+        const f = document.getElementById(fieldId);
+        const i = document.getElementById(iconId);
+        const show = f.type === 'password';
+        f.type = show ? 'text' : 'password';
+        i.className = show ? 'fas fa-eye-slash' : 'fas fa-eye';
+    }
+
+    function rotpInput(el, prevId, nextId) {
+        el.value = el.value.replace(/[^0-9]/g, '');
+        el.classList.toggle('filled', el.value !== '');
+        if (el.value && nextId) document.getElementById(nextId)?.focus();
+    }
+
+    function rotpBack(e, el, prevId, nextId) {
+        if (e.key === 'Backspace' && !el.value && prevId)
+            document.getElementById(prevId)?.focus();
+    }
+
+    function combineOTP() {
+        const otp = ['r1','r2','r3','r4','r5','r6']
+            .map(id => document.getElementById(id).value).join('');
+        if (otp.length < 6) {
+            alert('Please enter all 6 digits.');
+            return false;
+        }
+        document.getElementById('otp-hidden').value = otp;
+        return true;
+    }
+
+    // Auto-focus first OTP cell on verify page
+    const r1 = document.getElementById('r1');
+    if (r1) r1.focus();
+</script>
+</body>
 </html>
