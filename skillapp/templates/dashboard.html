@@ -4,12 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
-    <meta http-equiv="Pragma" content="no-cache">
     <title>Skillshelf - Dashboard</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'CSS/base.css' %}">
     <link rel="stylesheet" href="{% static 'CSS/Dashboard.css' %}">
@@ -20,13 +16,13 @@
 
     <main class="main-content">
 
-        <!-- Welcome Section -->
+        <!-- Welcome -->
         <div class="welcome-section">
             <h1>Welcome back, {{ user.full_name }}!</h1>
             <p>Here's an overview of your achievements and documents</p>
         </div>
 
-        <!-- Stats Cards -->
+        <!-- Top Stats -->
         <div class="stats-cards">
             <div class="stat-card">
                 <div class="stat-icon"><i class="fas fa-file-alt"></i></div>
@@ -58,109 +54,90 @@
             </div>
         </div>
 
-        <!-- Main Content Grid -->
+        <!-- Main Two-Column Layout -->
         <div class="content-grid">
 
-            <!-- Recent Documents -->
+            <!-- LEFT: Recently Uploaded Documents (Tall Card) -->
             <div class="recent-documents">
                 <div class="section-header">
                     <h2>Recent Documents</h2>
-                    <!-- data-href keeps Django URL out of onclick -->
-                    <a href="/documents/" class="view-all">
-                        View All <i class="fas fa-arrow-right"></i>
-                    </a>
+                    <a href="/documents/" class="view-all">View All →</a>
                 </div>
 
                 <div class="documents-list">
                     {% for doc in recent_docs %}
-                    <!-- data-url used by JS below — no onclick with Django tags -->
-                    <div class="document-item doc-clickable"
-                         data-url="/documents/">
+                    <div class="document-item doc-clickable" data-url="/documents/">
                         <div class="doc-icon doc-other">
                             <i class="fas {{ doc.file_icon }}"></i>
                         </div>
                         <div class="doc-info">
                             <h4>{{ doc.title }}</h4>
-                            <p>{{ doc.category_display }} &bull; {{ doc.file_type|upper }}</p>
+                            <p>{{ doc.category_display }} • {{ doc.file_type|upper }}</p>
                         </div>
                         <div class="doc-meta">
-                            <span>
-                                <i class="far fa-calendar"></i>
-                                {{ doc.uploaded_at|date:"M d, Y" }}
-                            </span>
-                            <span>
-                                <i class="fas fa-file"></i>
-                                {{ doc.file_size_display }}
-                            </span>
+                            <span><i class="far fa-calendar"></i> {{ doc.uploaded_at|date:"M d, Y" }}</span>
+                            <span><i class="fas fa-file"></i> {{ doc.file_size_display }}</span>
                         </div>
                     </div>
                     {% empty %}
-                    <div style="text-align:center;padding:40px;color:#8798AD;">
-                        <i class="fas fa-folder-open"
-                           style="font-size:48px;margin-bottom:16px;display:block;opacity:0.4;"></i>
-                        <p>No documents yet.</p>
-                        <a href="/upload/"
-                           style="color:#2E5BFF;font-weight:600;">
-                            Upload your first document
-                        </a>
-                    </div>
+                    <p style="text-align:center; padding:60px 20px; color:#8798AD;">
+                        No documents yet. <a href="/upload/" style="color:var(--primary)">Upload now</a>
+                    </p>
                     {% endfor %}
                 </div>
             </div>
 
-            <!-- Quick Stats & Actions -->
-            <div class="quick-stats">
-                <div class="quick-actions-section">
+            <!-- RIGHT: Quick Actions + Quick Stats -->
+            <div class="right-column">
+
+                <!-- Quick Actions -->
+                <div class="quick-stats">
+                    <div class="quick-actions-section">
+                        <div class="section-header">
+                            <h2>Quick Actions</h2>
+                        </div>
+                        <div class="action-buttons">
+                            <a href="/upload/" class="action-btn">
+                                <i class="fas fa-file-upload"></i> Upload New Document
+                            </a>
+                            <a href="/documents/" class="action-btn">
+                                <i class="fas fa-folder-open"></i> Browse All Documents
+                            </a>
+                            <a href="/profile/" class="action-btn">
+                                <i class="fas fa-user-edit"></i> Edit My Profile
+                            </a>
+                        </div>
+                        <a href="/upload/" class="upload-btn">
+                            <i class="fas fa-cloud-upload-alt"></i> Quick Upload
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Quick Stats -->
+                <div class="quick-stats">
                     <div class="section-header">
-                        <h2>Quick Actions</h2>
+                        <h2>Quick Stats</h2>
                     </div>
-
-                    <div class="action-buttons">
-                        <a href="/upload/" class="action-btn">
-                            <i class="fas fa-file-upload"></i>
-                            Upload New Document
-                        </a>
-                        <a href="/documents/" class="action-btn">
-                            <i class="fas fa-folder-open"></i>
-                            Browse All Documents
-                        </a>
-                        <a href="/profile/" class="action-btn">
-                            <i class="fas fa-user-edit"></i>
-                            Edit My Profile
-                        </a>
-                    </div>
-
-                    <a href="/upload/" class="upload-btn">
-                        <i class="fas fa-cloud-upload-alt"></i>
-                        Quick Upload
-                    </a>
-                </div><br>
-            </div>
-
-
-            <div class="quick-stats">
-                <div class="section-header">
-                    <h2>Quick Stats</h2>
-                </div>
-
-                <div class="stats-list">
-                    <div class="stat-item">
-                        <span class="stat-label">Total Documents</span>
-                        <span class="stat-value">{{ total_docs }}</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Storage Used</span>
-                        <span class="stat-value">{{ size_display }}</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Categories Used</span>
-                        <span class="stat-value">{{ categories_used }}</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Added This Week</span>
-                        <span class="stat-value">{{ recent_count }}</span>
+                    <div class="stats-list">
+                        <div class="stat-item">
+                            <span class="stat-label">Total Documents</span>
+                            <span class="stat-value">{{ total_docs }}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Storage Used</span>
+                            <span class="stat-value">{{ size_display }}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Categories Used</span>
+                            <span class="stat-value">{{ categories_used }}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Added This Week</span>
+                            <span class="stat-value">{{ recent_count }}</span>
+                        </div>
                     </div>
                 </div>
+
             </div>
         </div>
 
@@ -168,38 +145,29 @@
         <div class="categories-section">
             <div class="section-header">
                 <h2>Document Categories</h2>
-                <a href="/documents/" class="view-all">
-                    View All Documents
-                    <i class="fas fa-arrow-right"></i>
-                </a>
+                <a href="/documents/" class="view-all">View All →</a>
             </div>
-
             <div class="categories-list">
                 {% for slug, label in categories %}
-                <a href="/documents/?category={{ slug }}"
-                   class="category-tag"
-                   style="text-decoration:none;cursor:pointer;">
-                    {{ label }}
-                </a>
+                <a href="/documents/?category={{ slug }}" class="category-tag">{{ label }}</a>
                 {% endfor %}
             </div>
         </div>
 
     </main>
 
-
     {% include 'partials/footer.html' %}
 
     <script src="{% static 'JS/Dashboard.js' %}"></script>
     <script>
-    // Wire up document-item clicks using data-url (no Django tags in JS)
-    document.querySelectorAll('.doc-clickable').forEach(function(el) {
+    document.querySelectorAll('.doc-clickable').forEach(el => {
         el.style.cursor = 'pointer';
-        el.addEventListener('click', function() {
+        el.addEventListener('click', () => {
             window.location.href = el.getAttribute('data-url');
         });
     });
     </script>
+
     {% include 'partials/chatbot_widget.html' %}
 </body>
 </html>
