@@ -17,6 +17,68 @@
 
 <!-- Pass DB data to JS safely — zero Django tags inside script blocks -->
 {{ documents_json|json_script:"documents-data" }}
+<!-- ═══ PASSCODE MODAL ═══ -->
+<div class="passcode-overlay" id="passcodeOverlay"
+     {% if not needs_passcode %}style="display:none;"{% endif %}>
+    <div class="passcode-modal">
+
+        <div class="passcode-icon">
+            <i class="fas fa-lock"></i>
+        </div>
+
+        {% if not has_passcode %}
+        <!-- FIRST TIME: Set passcode -->
+        <h2>Secure Your Documents</h2>
+        <p>Create a 4-digit passcode to protect access to your documents.</p>
+        {% else %}
+        <!-- RETURNING: Enter passcode -->
+        <h2>Documents Locked</h2>
+        <p>Enter your 4-digit passcode to access your documents.</p>
+        {% endif %}
+
+        <div class="passcode-boxes" id="passcodeBoxes">
+            <input type="password" maxlength="1" class="pbox" id="p1"
+                   oninput="pInput(this,null,'p2')"
+                   onkeydown="pBack(event,this,null,'p2')">
+            <input type="password" maxlength="1" class="pbox" id="p2"
+                   oninput="pInput(this,'p1','p3')"
+                   onkeydown="pBack(event,this,'p1','p3')">
+            <input type="password" maxlength="1" class="pbox" id="p3"
+                   oninput="pInput(this,'p2','p4')"
+                   onkeydown="pBack(event,this,'p2','p4')">
+            <input type="password" maxlength="1" class="pbox" id="p4"
+                   oninput="pInput(this,'p3',null)"
+                   onkeydown="pBack(event,this,'p3',null)">
+        </div>
+
+        <div class="passcode-dots" id="passcodeDots">
+            <span class="pdot" id="dot1"></span>
+            <span class="pdot" id="dot2"></span>
+            <span class="pdot" id="dot3"></span>
+            <span class="pdot" id="dot4"></span>
+        </div>
+
+        <div id="passcodeMsg" class="passcode-msg"></div>
+
+        <button class="passcode-btn" id="passcodeSubmit"
+                onclick="submitPasscode()">
+            {% if not has_passcode %}
+            <i class="fas fa-lock"></i> Set Passcode
+            {% else %}
+            <i class="fas fa-unlock"></i> Unlock Documents
+            {% endif %}
+        </button>
+
+        {% if has_passcode %}
+        <div class="passcode-attempts" id="passcodeAttempts"></div>
+        {% endif %}
+
+        <a href="/dashboard/" class="passcode-back">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+
+    </div>
+</div>
 
 <div class="container">
 
@@ -479,6 +541,181 @@ document.getElementById('zoomReset').addEventListener('click', function() {
 document.getElementById('rotateBtn').addEventListener('click', function() {
     rotation += 90; updateZoom();
 });
+
+
+var passcodeAction = '{{ has_passcode|yesno:"verify,set" }}';
+var attempts = 0;
+var MAX_ATTEMPTS = 5;
+
+// Show overlay if needed
+window.addEventListener('DOMContentLoaded', function() {
+    var overlay = document.getElementById('passcodeOverlay');
+    if (overlay) {
+        var needs = '{{ needs_passcode|yesno:"true,false" }}';
+        if (needs === 'true') {
+            overlay.style.display = 'flex';
+            setTimeout(function() {
+                document.getElementById('p1').focus();
+            }, 300);
+        } else {
+            overlay.style.display = 'none';
+        }
+    }
+});
+
+function pInput(el, prevId, nextId) {
+    el.value = el.value.replace(/[^0-9]/g, '');
+    updateDots();
+    if (el.value && nextId) {
+        document.getElementById(nextId).focus();
+    }
+    var code = getCode();
+    if (code.length === 4) {
+        setTimeout(submitPasscode, 200);
+    }
+}
+
+function pBack(e, el, prevId, nextId) {
+    if (e.key === 'Backspace' && !el.value && prevId) {
+        document.getElementById(prevId).focus();
+    }
+    updateDots();
+}
+
+function updateDots() {
+    var code = getCode();
+    for (var i = 1; i <= 4; i++) {
+        var dot = document.getElementById('dot' + i);
+        if (dot) dot.classList.toggle('filled', i <= code.length);
+    }
+}
+
+function getCode() {
+    return ['p1','p2','p3','p4']
+        .map(function(id) {
+            var el = document.getElementById(id);
+            return el ? el.value : '';
+        }).join('');
+}
+
+function clearBoxes() {
+    ['p1','p2','p3','p4'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    updateDots();
+    var p1 = document.getElementById('p1');
+    if (p1) p1.focus();
+}
+
+function showMsg(text, type) {
+    var el = document.getElementById('passcodeMsg');
+    if (!el) return;
+    el.textContent = text;
+    el.className   = 'passcode-msg ' + (type === 'error' ? 'msg-error' : 'msg-success');
+}
+
+async function submitPasscode() {
+    var code = getCode();
+    if (code.length < 4) {
+        showMsg('Please enter all 4 digits.', 'error');
+        return;
+    }
+
+    var btn = document.getElementById('passcodeSubmit');
+    if (!btn || btn.disabled) return;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
+
+    try {
+        var resp = await fetch('/documents/passcode/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrf(),
+            },
+            body: JSON.stringify({
+                action: passcodeAction,
+                code:   code
+            }),
+        });
+
+        var data = await resp.json();
+
+        if (data.success) {
+            showMsg(
+                passcodeAction === 'set'
+                    ? 'Passcode set! Unlocking...'
+                    : 'Access granted!',
+                'success'
+            );
+
+            // Animate icon to unlocked
+            var icon    = document.querySelector('.passcode-icon i');
+            var iconWrap= document.querySelector('.passcode-icon');
+            if (icon)     icon.className = 'fas fa-lock-open';
+            if (iconWrap) {
+                iconWrap.style.background   = '#f0fdf4';
+                iconWrap.style.borderColor  = '#bbf7d0';
+                iconWrap.style.color        = '#16a34a';
+            }
+
+            setTimeout(function() {
+                // Hide overlay and reload page to show documents
+                document.getElementById('passcodeOverlay').style.display = 'none';
+                window.location.reload();
+            }, 800);
+
+        } else {
+            attempts++;
+            clearBoxes();
+            showMsg(data.error || 'Incorrect passcode.', 'error');
+
+            // Shake
+            var boxes = document.getElementById('passcodeBoxes');
+            if (boxes) {
+                boxes.classList.add('shake');
+                setTimeout(function() { boxes.classList.remove('shake'); }, 500);
+            }
+
+            // Show attempts
+            if (passcodeAction === 'verify') {
+                var remaining = MAX_ATTEMPTS - attempts;
+                var attEl = document.getElementById('passcodeAttempts');
+                if (attEl) {
+                    attEl.textContent = remaining > 0
+                        ? remaining + ' attempt(s) remaining'
+                        : 'Too many attempts. Redirecting...';
+                }
+                if (attempts >= MAX_ATTEMPTS) {
+                    setTimeout(function() {
+                        window.location.href = '/dashboard/';
+                    }, 2000);
+                    return;
+                }
+            }
+
+            btn.disabled = false;
+            btn.innerHTML = passcodeAction === 'set'
+                ? '<i class="fas fa-lock"></i> Set Passcode'
+                : '<i class="fas fa-unlock"></i> Unlock Documents';
+        }
+
+    } catch (err) {
+        showMsg('Network error. Please try again.', 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-unlock"></i> Unlock Documents';
+    }
+}
+
+function getCsrf() {
+    var c = document.cookie.split(';');
+    for (var i = 0; i < c.length; i++) {
+        var x = c[i].trim();
+        if (x.startsWith('csrftoken=')) return decodeURIComponent(x.substring(10));
+    }
+    return '';
+}
 </script>
 {% include 'partials/chatbot_widget.html' %}
 </body>

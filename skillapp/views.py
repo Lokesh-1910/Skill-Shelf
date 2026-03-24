@@ -41,14 +41,11 @@ def page_view(request, page):
         return redirect('welcome')
     return render(request, template)
 
-
 # ─────────────────────────────────────────────
-# REGISTER
-# ─────────────────────────────────────────────
-# ─────────────────────────────────────────────
-# REGISTER — Step 1: collect details, send OTP
+# REGISTER — 
 # ─────────────────────────────────────────────
 
+# Step 1: collect details, send OTP
 def register_view(request):
     if request.method == "POST":
         action = request.POST.get("action")
@@ -213,6 +210,7 @@ def login_view(request):
 
 @never_cache
 def logout_view(request):
+    request.session.pop('doc_unlocked', None)
     logout(request)
     request.session.flush()
     response = redirect("welcome")
@@ -265,9 +263,48 @@ def dashboard_view(request):
 @never_cache
 @login_required(login_url='login')
 def documents_view(request):
+    user         = request.user
+    has_passcode = bool(user.doc_passcode)
+    is_unlocked  = request.session.get('doc_unlocked', False)
+
+    # ── Passcode gate ──
+    if not has_passcode:
+    # First time — show page with setup modal
+        context = {
+            'user':           request.user,
+            'needs_passcode': True,
+            'has_passcode':   False,
+            'documents':      [],
+            'doc_count':      0,
+            'total_count':    0,
+            'categories':     Document.CATEGORY_CHOICES,
+            'cat_counts':     {},
+            'tag_choices':    Document.TAG_CHOICES,
+            'documents_json': [],
+            'filters':        {},
+        }
+        return no_cache(render(request, 'document.html', context))
+
+    if has_passcode and not is_unlocked:
+        # Has passcode but not verified this session
+        context = {
+            'user':           request.user,
+            'needs_passcode': True,
+            'has_passcode':   True,
+            'documents':      [],
+            'doc_count':      0,
+            'total_count':    0,
+            'categories':     Document.CATEGORY_CHOICES,
+            'cat_counts':     {},
+            'tag_choices':    Document.TAG_CHOICES,
+            'documents_json': [],
+            'filters':        {},
+        }
+        return no_cache(render(request, 'document.html', context))
+
+    # ── Unlocked — show documents ──
     docs = Document.objects.filter(owner=request.user)
 
-    # Search
     q = request.GET.get('q', '').strip()
     if q:
         docs = docs.filter(
@@ -277,22 +314,18 @@ def documents_view(request):
             Q(tags__icontains=q)
         )
 
-    # Category filter
     category = request.GET.get('category', '')
     if category:
         docs = docs.filter(category=category)
 
-    # Tag filter
     tag = request.GET.get('tag', '')
     if tag:
         docs = docs.filter(tags=tag)
 
-    # Year filter
     year = request.GET.get('year', '')
     if year:
         docs = docs.filter(uploaded_at__year=year)
 
-    # Size filter
     size = request.GET.get('size', '')
     if size == 'small':
         docs = docs.filter(file_size__lt=1024*1024)
@@ -301,7 +334,6 @@ def documents_view(request):
     elif size == 'large':
         docs = docs.filter(file_size__gt=2*1024*1024)
 
-    # Sort
     sort = request.GET.get('sort', 'desc')
     if sort == 'asc':
         docs = docs.order_by('uploaded_at')
@@ -312,19 +344,14 @@ def documents_view(request):
     else:
         docs = docs.order_by('-uploaded_at')
 
-    # Category counts for sidebar
-    all_docs  = Document.objects.filter(owner=request.user)
+    all_docs   = Document.objects.filter(owner=request.user)
     cat_counts = {}
     for slug, label in Document.CATEGORY_CHOICES:
         count = all_docs.filter(category=slug).count()
         if count > 0:
             cat_counts[slug] = {'label': label, 'count': count}
 
-    # Total count (unfiltered) for sidebar 'All' badge
-    total_count = Document.objects.filter(owner=request.user).count()
-
-    # Build safe JSON for the template (used by json_script filter)
-    # This avoids Django template tags inside <script> blocks
+    total_count    = Document.objects.filter(owner=request.user).count()
     documents_json = [
         {
             'id':           doc.id,
@@ -358,13 +385,15 @@ def documents_view(request):
         'tag_choices':    Document.TAG_CHOICES,
         'documents_json': documents_json,
         'urls_json':      {},
+        'has_passcode':   has_passcode,
+        'needs_passcode': False,
         'filters': {
             'q': q, 'category': category,
             'tag': tag, 'year': year,
             'size': size, 'sort': sort,
         },
     }
-    return no_cache(render(request, "document.html", context))
+    return no_cache(render(request, 'document.html', context))
 
 
 # ─────────────────────────────────────────────
@@ -830,3 +859,73 @@ def verify_otp_view(request):
 def resend_otp_view(request):
     # Just call send_otp_view again
     return send_otp_view(request)
+
+# ─────────────────────────────────────────────
+# DOCUMENT PASSCODE — set & verify
+# ─────────────────────────────────────────────
+
+@csrf_exempt
+@login_required(login_url='login')
+def verify_doc_passcode(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    try:
+        data   = json.loads(request.body)
+        action = data.get('action')
+        code   = data.get('code', '').strip()
+
+        if not code.isdigit() or len(code) != 4:
+            return JsonResponse({'error': 'Passcode must be exactly 4 digits.'}, status=400)
+
+        user = request.user
+
+        if action == 'set':
+            user.doc_passcode = code
+            user.save()
+            request.session['doc_unlocked'] = True
+            request.session.modified = True
+            return JsonResponse({'success': True, 'message': 'Passcode set!'})
+
+        elif action == 'verify':
+            if not user.doc_passcode:
+                return JsonResponse({'error': 'No passcode set.'}, status=400)
+            if user.doc_passcode == code:
+                request.session['doc_unlocked'] = True
+                request.session.modified = True
+                return JsonResponse({'success': True})
+            else:
+                return JsonResponse({'error': 'Incorrect passcode. Try again.'}, status=400)
+
+        return JsonResponse({'error': 'Invalid action.'}, status=400)
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+    if request.method != 'POST':
+        return JsonResponse({'error': 'POST required'}, status=405)
+
+    data   = json.loads(request.body)
+    action = data.get('action')  # 'set' or 'verify'
+    code   = data.get('code', '').strip()
+
+    if not code.isdigit() or len(code) != 4:
+        return JsonResponse({'error': 'Passcode must be exactly 4 digits.'}, status=400)
+
+    user = request.user
+
+    if action == 'set':
+        user.doc_passcode = code
+        user.save()
+        request.session['doc_unlocked'] = True
+        return JsonResponse({'success': True, 'message': 'Passcode set successfully!'})
+
+    elif action == 'verify':
+        if not user.doc_passcode:
+            return JsonResponse({'error': 'No passcode set.'}, status=400)
+        if user.doc_passcode == code:
+            request.session['doc_unlocked'] = True
+            return JsonResponse({'success': True})
+        else:
+            return JsonResponse({'error': 'Incorrect passcode. Please try again.'}, status=400)
+
+    return JsonResponse({'error': 'Invalid action.'}, status=400)

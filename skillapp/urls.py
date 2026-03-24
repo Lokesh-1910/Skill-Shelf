@@ -27,4 +27,5 @@ urlpatterns = [
     path('api/chat/',           views.chat_api,         name='chat_api'),
     path('api/chat/history/',   views.chat_history_api, name='chat_history_api'),
     path('api/chat/clear/',     views.chat_clear_api,   name='chat_clear_api'),
+    path('documents/passcode/', views.verify_doc_passcode, name='doc_passcode'),
 ]

@@ -66,6 +66,8 @@ class User(AbstractBaseUser, PermissionsMixin):
         null=True, blank=True
     )
 
+    doc_passcode = models.CharField(max_length=4, blank=True, null=True)
+    
     # Django internals
     is_active   = models.BooleanField(default=True)
     is_staff    = models.BooleanField(default=False)
