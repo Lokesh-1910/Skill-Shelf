@@ -1,4 +1,5 @@
 {% load static %}
+
 <nav class="navbar">
   <div class="nav-container">
     <div class="logo">
@@ -20,3 +21,16 @@
     </div>
   </div>
 </nav>
+
+<!-- Inactivity Warning Modal (No Stay Button) -->
+<div id="inactivityWarning" class="inactivity-modal" style="display: none;">
+    <div class="inactivity-content">
+        <i class="fas fa-clock"></i>
+        <h3>Session Timeout</h3>
+        <p>Your session will expire in <strong id="countdown">30</strong> seconds due to inactivity.</p>
+        <p>You will be logged out automatically.</p>
+    </div>
+</div>
+
+<link rel="stylesheet" href="{% static 'CSS/base.css' %}">
+<script src="{% static 'JS/base.js' %}"></script>

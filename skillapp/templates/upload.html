@@ -801,24 +801,30 @@
           });
 
           items.forEach((item) => {
-            item.addEventListener("click", function () {
-              input.value = this.textContent.trim();
-              hiddenInput.value = this.getAttribute("data-value");
-              dropdown.classList.remove("show");
-            });
+              // Use mousedown instead of click
+              // mousedown fires BEFORE blur — this is the key fix
+              item.addEventListener("mousedown", function (e) {
+                  e.preventDefault(); // Prevents input from losing focus prematurely
+                  input.value = this.textContent.trim();
+                  hiddenInput.value = this.getAttribute("data-value");
+                  dropdown.classList.remove("show");
+                  input.blur(); // manually blur after selection
+              });
           });
 
           input.addEventListener("blur", function () {
-            setTimeout(() => {
-              if (input.value.trim() !== "") {
-                // For custom values, convert to lowercase with underscores
-                hiddenInput.value = input.value
-                  .trim()
-                  .toLowerCase()
-                  .replace(/\s+/g, "_");
-              }
-              dropdown.classList.remove("show");
-            }, 200);
+              setTimeout(() => {
+                  // Only hide if mouse is NOT over a dropdown item
+                  if (!dropdown.querySelector('.dropdown-item:hover')) {
+                      if (input.value.trim() !== "") {
+                          hiddenInput.value = input.value
+                              .trim()
+                              .toLowerCase()
+                              .replace(/\s+/g, "_");
+                      }
+                      dropdown.classList.remove("show");
+                  }
+              }, 300);  // increased from 200 to 300
           });
         }
 
@@ -843,5 +849,6 @@
         });
       });
     </script>
+    {% include 'partials/chatbot_widget.html' %}
   </body>
 </html>

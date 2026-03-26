@@ -49,6 +49,13 @@ class User(AbstractBaseUser, PermissionsMixin):
         ("prefer-not-to-say", "Prefer not to say"),
     ]
 
+    # ── Notification preference: 'email', 'sms', or 'none' ──
+    NOTIFICATION_CHOICES = [
+        ("email", "Email"),
+        ("sms",   "SMS"),
+        ("none",  "None"),
+    ]
+
     # Registration fields
     full_name   = models.CharField(max_length=200)
     email       = models.EmailField(unique=True)
@@ -67,7 +74,15 @@ class User(AbstractBaseUser, PermissionsMixin):
     )
 
     doc_passcode = models.CharField(max_length=4, blank=True, null=True)
+    is_2fa_enabled = models.BooleanField(default=False)
     
+    # ── NEW: Notification preference (only one at a time) ──
+    notification_preference = models.CharField(
+        max_length=10,
+        choices=NOTIFICATION_CHOICES,
+        default="email",   # Email is ON by default
+    )
+
     # Django internals
     is_active   = models.BooleanField(default=True)
     is_staff    = models.BooleanField(default=False)
@@ -91,7 +106,6 @@ class User(AbstractBaseUser, PermissionsMixin):
 
 class Document(models.Model):
 
-    # ── Category choices (matches your dashboard UI) ──────────────
     CATEGORY_CHOICES = [
         ("academic_records",            "Academic Records"),
         ("academic_achievements",       "Academic Achievements"),
@@ -117,7 +131,6 @@ class Document(models.Model):
         ("other",                       "Other"),
     ]
 
-    # ── Tag choices (matches your document.js filters) ─────────────
     TAG_CHOICES = [
         ("important", "Important"),
         ("official",  "Official"),
@@ -125,7 +138,6 @@ class Document(models.Model):
         ("other",     "Other"),
     ]
 
-    # ── Status ────────────────────────────────────────────────────
     STATUS_CHOICES = [
         ("active",   "Active"),
         ("expired",  "Expired"),
@@ -133,23 +145,18 @@ class Document(models.Model):
     ]
     expiry_date = models.DateField(null=True, blank=True, help_text="e.g. passport/ID expiry date")
 
-
-
-    # ── Allowed file extensions ────────────────────────────────────
     ALLOWED_EXTENSIONS = [
         "pdf", "doc", "docx",
         "jpg", "jpeg", "png",
         "zip",
     ]
 
-    # ── Relationships ─────────────────────────────────────────────
     owner    = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         related_name="documents"
     )
 
-    # ── Core fields ───────────────────────────────────────────────
     title       = models.CharField(max_length=255)
     category    = models.CharField(
         max_length=60,
@@ -168,16 +175,14 @@ class Document(models.Model):
         default="active"
     )
 
-    # ── File ─────────────────────────────────────────────────────
     file      = models.FileField(
         upload_to=document_file_path,
         validators=[FileExtensionValidator(allowed_extensions=ALLOWED_EXTENSIONS)]
     )
     file_name = models.CharField(max_length=255, blank=True)
-    file_size = models.PositiveBigIntegerField(default=0)  # bytes
-    file_type = models.CharField(max_length=10, blank=True)  # pdf/jpg/png etc
+    file_size = models.PositiveBigIntegerField(default=0)
+    file_type = models.CharField(max_length=10, blank=True)
 
-    # ── Timestamps ────────────────────────────────────────────────
     uploaded_at   = models.DateTimeField(auto_now_add=True)
     updated_at    = models.DateTimeField(auto_now=True)
 
@@ -189,7 +194,6 @@ class Document(models.Model):
         return f"{self.title} — {self.owner.full_name}"
 
     def save(self, *args, **kwargs):
-        # Auto-fill file metadata before saving
         if self.file:
             self.file_name = os.path.basename(self.file.name)
             if "." in self.file_name:
@@ -200,11 +204,8 @@ class Document(models.Model):
                 pass
         super().save(*args, **kwargs)
 
-    # ── Helper properties ─────────────────────────────────────────
-
     @property
     def file_size_display(self):
-        """Human-readable size: 1.2 MB"""
         size = self.file_size
         for unit in ["B", "KB", "MB", "GB"]:
             if size < 1024:
@@ -218,7 +219,6 @@ class Document(models.Model):
 
     @property
     def file_icon(self):
-        """Returns font-awesome class based on file type"""
         icons = {
             "pdf":  "fa-file-pdf",
             "doc":  "fa-file-word",
@@ -233,7 +233,7 @@ class Document(models.Model):
     @property
     def is_image(self):
         return self.file_type in ["jpg", "jpeg", "png"]
-    
+
 
 class ChatMessage(models.Model):
     ROLE_CHOICES = [
@@ -266,7 +266,6 @@ class OTPVerification(models.Model):
     is_used    = models.BooleanField(default=False)
 
     def is_expired(self):
-        # OTP expires after 5 minutes
         return timezone.now() > self.created_at + timezone.timedelta(minutes=5)
 
     @staticmethod
