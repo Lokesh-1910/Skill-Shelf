@@ -32,12 +32,12 @@ SITE_URL = 'http://localhost:8000'
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-#i$dqu)!bb#g$f_c3u#ny4fw_e%9&u*58)0_c8qzk$)btj3aau'
+SECRET_KEY = env('SECRET_KEY', default='django-insecure-#i$dqu)!bb#g$f_c3u#ny4fw_e%9&u*58)0_c8qzk$)btj3aau')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -54,6 +54,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -128,21 +129,24 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 STATICFILES_DIRS = [BASE_DIR / "skillapp" / "static"]
 
 AUTH_USER_MODEL = 'skillapp.User'
 MEDIA_URL  = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+# WhiteNoise for serving static files efficiently
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
 # ── Email OTP (Gmail SMTP) ──
 EMAIL_BACKEND       = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST          = 'smtp.gmail.com'
 EMAIL_PORT          = 587
 EMAIL_USE_TLS       = True
-EMAIL_HOST_USER     = 'krishnakumardkris@gmail.com' 
-EMAIL_HOST_PASSWORD = 'ausduxoxcpkkcnxp'
+EMAIL_HOST_USER = env('EMAIL_HOST_USER', default='krishnakumardkris@gmail.com')
+EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD', default='ausduxoxcpkkcnxp')
 DEFAULT_FROM_EMAIL  = f'Skill Shelf <{EMAIL_HOST_USER}>'
-import os
 
 # settings.py — replace your current Twilio block with this
 
@@ -152,6 +156,8 @@ TWILIO_PHONE_NUMBER       = env('TWILIO_PHONE_NUMBER',        default='')
 TWILIO_VERIFY_SERVICE_SID = env('TWILIO_VERIFY_SERVICE_SID', default='')
 
 # ── Session Expiry Settings ─────────────────────────────────────
-SESSION_COOKIE_AGE = 60 * 1                    # 15 minutes (in seconds)
+SESSION_COOKIE_AGE = 60 * 1                 # 15 minutes (in seconds)
 SESSION_SAVE_EVERY_REQUEST = True               # Reset timer on every request
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+
+SITE_URL = env('SITE_URL', default='https://your-app.onrender.com')

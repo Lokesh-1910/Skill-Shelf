@@ -1,0 +1,1 @@
+web: gunicorn SkillShelf.wsgi --log-file -

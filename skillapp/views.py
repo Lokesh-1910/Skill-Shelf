@@ -1150,6 +1150,8 @@ def toggle_2fa_view(request):
             })
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         return JsonResponse({'error': str(e)}, status=500)
 
 
