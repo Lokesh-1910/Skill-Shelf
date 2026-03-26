@@ -189,6 +189,95 @@
 ════════════════════════════ -->
 <section id="securityTab" class="tab-content hidden">
 
+    <!-- ── TWO FACTOR AUTHENTICATION CARD ── -->
+<div class="card" id="twoFaCard">
+    <div class="card-header">
+        <div>
+            <h2 class="card-title">
+                <i class="fas fa-shield-halved"></i> Two-Factor Authentication
+            </h2>
+            <p class="card-subtitle">
+                Add an extra layer of security — verify via SMS OTP on every login
+            </p>
+        </div>
+        <div class="sec-badge" id="twoFaBadge">
+            {% if user.is_2fa_enabled %}
+                <i class="fas fa-lock"></i> Enabled
+            {% else %}
+                <i class="fas fa-lock-open"></i> Disabled
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Status info box -->
+    <div class="sec-info-box" id="twoFaInfoBox">
+        <i class="fas fa-info-circle"></i>
+        <span id="twoFaInfoText">
+            {% if user.is_2fa_enabled %}
+                2FA is currently <strong>enabled</strong>.
+                Every login requires SMS OTP verification to
+                <strong>+91••••{{ user.phone|slice:"-4:" }}</strong>.
+                Toggle off to disable.
+            {% else %}
+                2FA is currently <strong>disabled</strong>.
+                Enable it to require SMS OTP on every login.
+                Your phone number: <strong>
+                {% if user.phone %}+91••••{{ user.phone|slice:"-4:" }}
+                {% else %}Not set — add in Profile tab{% endif %}</strong>.
+            {% endif %}
+        </span>
+    </div>
+
+    <!-- Toggle row -->
+    <div class="toggle-row" style="margin-top: 20px;">
+        <label class="switch">
+            <input type="checkbox" id="twoFaToggle"
+                   {% if user.is_2fa_enabled %}checked{% endif %}
+                   onchange="handle2FAToggle(this)">
+            <span class="slider"></span>
+        </label>
+        <span id="twoFaStatus" style="font-weight:600; color:#374151;">
+            {% if user.is_2fa_enabled %}2FA Enabled{% else %}2FA Disabled{% endif %}
+        </span>
+    </div>
+
+    <!-- OTP confirmation box (shown after toggle ON) -->
+    <div id="twoFaOtpBox" class="hidden" style="margin-top: 24px;">
+        <div class="otp-sent-banner">
+            <i class="fas fa-mobile-alt"></i>
+            <div>
+                <strong>OTP Sent!</strong>
+                <p id="twoFaOtpHint">Enter the OTP sent to your phone to confirm enabling 2FA.</p>
+            </div>
+        </div>
+
+        <div class="sec-otp-row">
+            <input type="text" maxlength="1" class="sec-otp-cell" id="ta_o1"
+                   oninput="secOtpIn(this,null,'ta_o2')" onkeydown="secOtpBack(event,this,null,'ta_o2')">
+            <input type="text" maxlength="1" class="sec-otp-cell" id="ta_o2"
+                   oninput="secOtpIn(this,'ta_o1','ta_o3')" onkeydown="secOtpBack(event,this,'ta_o1','ta_o3')">
+            <input type="text" maxlength="1" class="sec-otp-cell" id="ta_o3"
+                   oninput="secOtpIn(this,'ta_o2','ta_o4')" onkeydown="secOtpBack(event,this,'ta_o2','ta_o4')">
+            <input type="text" maxlength="1" class="sec-otp-cell" id="ta_o4"
+                   oninput="secOtpIn(this,'ta_o3','ta_o5')" onkeydown="secOtpBack(event,this,'ta_o3','ta_o5')">
+            <input type="text" maxlength="1" class="sec-otp-cell" id="ta_o5"
+                   oninput="secOtpIn(this,'ta_o4','ta_o6')" onkeydown="secOtpBack(event,this,'ta_o4','ta_o6')">
+            <input type="text" maxlength="1" class="sec-otp-cell" id="ta_o6"
+                   oninput="secOtpIn(this,'ta_o5',null)" onkeydown="secOtpBack(event,this,'ta_o5',null)">
+        </div>
+
+        <div class="sec-otp-actions">
+            <button type="button" class="btn btn-primary" onclick="confirm2FA()">
+                <i class="fas fa-check"></i> Confirm & Enable 2FA
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="cancel2FA()">
+                <i class="fas fa-times"></i> Cancel
+            </button>
+        </div>
+        <div id="twoFaMsg" class="sec-msg"></div>
+    </div>
+</div>
+    
     <!-- ── CHANGE PASSWORD CARD ── -->
     <div class="card" id="passwordCard">
         <div class="card-header">
@@ -473,7 +562,8 @@
 
 </section>
 
-    <!-- ═══════════════════════════
+
+<!-- ═══════════════════════════
          SETTINGS TAB
     ════════════════════════════ -->
     <section id="settingsTab" class="tab-content hidden">
@@ -481,66 +571,128 @@
 
             <div class="card-header">
                 <div>
-                    <h2 class="card-title">Settings</h2>
+                    <h2 class="card-title">
+                        <i class="fas fa-sliders-h"></i> Settings
+                    </h2>
                     <p class="card-subtitle">Customize your application preferences</p>
                 </div>
             </div>
 
-            <!-- Appearance -->
+            <!-- ── Appearance ── -->
             <div class="form-section">
-                <h3 class="section-title">Appearance</h3>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label">Theme</label>
-                        <div class="toggle-row">
-                            <label class="switch">
-                                <input type="checkbox" id="darkModeToggle"
-                                       onchange="toggleDarkMode(this)">
-                                <span class="slider"></span>
-                            </label>
-                            <span id="themeStatus">Light Mode</span>
+                <h3 class="section-title">
+                    <i class="fas fa-palette"></i> Appearance
+                </h3>
+
+                <div class="settings-row">
+                    <div class="settings-row-info">
+                        <div class="settings-icon-wrap">
+                            <i class="fas fa-moon"></i>
                         </div>
-                        <p class="card-subtitle">Switch between light and dark theme</p>
+                        <div>
+                            <p class="settings-label">Dark Mode</p>
+                            <p class="card-subtitle">
+                                Temporarily switches to dark theme for this page only.
+                                Resets when you navigate away.
+                            </p>
+                        </div>
                     </div>
+                    <label class="switch">
+                        <input type="checkbox" id="darkModeToggle"
+                               onchange="toggleDarkMode(this)">
+                        <span class="slider"></span>
+                    </label>
                 </div>
             </div>
 
-            <!-- Notification Settings -->
+            <!-- ── Notifications ── -->
             <div class="form-section">
-                <h3 class="section-title">Notifications</h3>
-                <div class="notif-list">
-                    <div class="notif-row">
-                        <div>
-                            <p class="notif-title">Email Notifications</p>
-                            <p class="card-subtitle">Receive updates via email</p>
+                <h3 class="section-title">
+                    <i class="fas fa-bell"></i> Login Notifications
+                </h3>
+
+                <p class="settings-notif-desc">
+                    Receive an alert whenever a new login is detected on your account.
+                    You can only choose <strong>one method</strong> at a time.
+                    Turning one ON will automatically turn the other OFF.
+                </p>
+
+                <!-- Email Toggle -->
+                <div class="settings-row" id="emailNotifRow">
+                    <div class="settings-row-info">
+                        <div class="settings-icon-wrap settings-icon-email">
+                            <i class="fas fa-envelope"></i>
                         </div>
-                        <label class="switch">
-                            <input type="checkbox" id="emailNotifications" checked>
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-                    <div class="notif-row">
                         <div>
-                            <p class="notif-title">SMS Notifications</p>
-                            <p class="card-subtitle">Receive updates via SMS</p>
+                            <p class="settings-label">Email Notifications</p>
+                            <p class="card-subtitle">
+                                Login alert sent to
+                                <strong>{{ user.email }}</strong>
+                            </p>
                         </div>
-                        <label class="switch">
-                            <input type="checkbox" id="smsNotifications">
-                            <span class="slider"></span>
-                        </label>
                     </div>
+                    <label class="switch">
+                        <input type="checkbox" id="emailNotifications"
+                               {% if user.notification_preference == 'email' %}checked{% endif %}
+                               onchange="handleNotifToggle('email', this)">
+                        <span class="slider"></span>
+                    </label>
                 </div>
+
+                <!-- SMS Toggle -->
+                <div class="settings-row" id="smsNotifRow">
+                    <div class="settings-row-info">
+                        <div class="settings-icon-wrap settings-icon-sms">
+                            <i class="fas fa-sms"></i>
+                        </div>
+                        <div>
+                            <p class="settings-label">SMS Notifications</p>
+                            <p class="card-subtitle">
+                                {% if user.phone %}
+                                    Login alert sent to <strong>{{ user.phone }}</strong>
+                                {% else %}
+                                    <span class="text-warning">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                        Add your phone number in Profile tab to enable SMS
+                                    </span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="smsNotifications"
+                               {% if user.notification_preference == 'sms' %}checked{% endif %}
+                               onchange="handleNotifToggle('sms', this)">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <!-- Active status indicator -->
+                <div class="notif-status-bar" id="notifStatusBar">
+                    <i class="fas fa-info-circle"></i>
+                    <span id="notifStatusText">
+                        {% if user.notification_preference == 'email' %}
+                            ✅ Email notifications are currently active.
+                        {% elif user.notification_preference == 'sms' %}
+                            ✅ SMS notifications are currently active.
+                        {% else %}
+                            ⚠️ All notifications are turned off.
+                        {% endif %}
+                    </span>
+                </div>
+
             </div>
 
-            <!-- Account Actions -->
+            <!-- ── Account Actions ── -->
             <div class="form-section">
-                <h3 class="section-title">Account Actions</h3>
-                <div class="action-buttons">
-                    <!-- POST logout — safer than GET, prevents CSRF logout attacks -->
+                <h3 class="section-title">
+                    <i class="fas fa-user-cog"></i> Account Actions
+                </h3>
+                <div class="action-buttons" style="border-top: none; padding-top: 0; margin-top: 0;">
                     <form method="POST" action="{% url 'logout' %}">
                         {% csrf_token %}
-                        <button type="submit" class="btn btn-secondary">
-                            <i class="fa fa-sign-out-alt"></i> Logout
+                        <button type="submit" class="btn btn-logout">
+                            <i class="fas fa-sign-out-alt"></i> Logout
                         </button>
                     </form>
                 </div>
@@ -548,6 +700,8 @@
 
         </div>
     </section>
+
+
 
 </main>
 {% include 'partials/footer.html' %}

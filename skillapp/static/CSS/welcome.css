@@ -44,7 +44,7 @@ header {
   align-items: center;
   gap: 10px;
   font-family: "Syne", sans-serif;
-  font-size: 20px;
+  font-size: 33px;
   font-weight: 800;
   color: var(--blue);
   text-decoration: none;
@@ -281,7 +281,7 @@ header {
 /* Slideshow */
 .hero-slideshow {
   flex: 1;
-  max-width: 520px;
+  max-width: 780px;
   position: relative;
   z-index: 1;
   animation: fadeUp 0.7s 0.2s ease both;
@@ -289,6 +289,7 @@ header {
 
 .slideshow-container {
   position: relative;
+  height: 500px;
   border-radius: 16px;
   overflow: hidden;
   box-shadow:
@@ -304,7 +305,7 @@ header {
 
 .slide img {
   width: 100%;
-  height: 420px;
+  height: 100%;
   object-fit: cover;
 }
 

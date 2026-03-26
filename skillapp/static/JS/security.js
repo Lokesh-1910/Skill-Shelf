@@ -308,4 +308,140 @@ function getSecCsrf() {
     }
     var el = document.querySelector('[name=csrfmiddlewaretoken]');
     return el ? el.value : '';
+
+}
+
+// ═══════════════════════════════════════
+//  2FA TOGGLE — Security Tab
+// ═══════════════════════════════════════
+
+function handle2FAToggle(checkbox) {
+    if (checkbox.checked) {
+        // User wants to ENABLE — send OTP first to confirm
+        checkbox.checked = false; // revert until OTP confirmed
+        enable2FA();
+    } else {
+        // User wants to DISABLE — no OTP needed
+        disable2FA();
+    }
+}
+
+async function enable2FA() {
+    showSecMsg('twoFaMsg', 'Sending OTP to your phone...', 'loading');
+
+    const csrf = getSecCsrf();
+    try {
+        const res  = await fetch('/2fa/toggle/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+            body: JSON.stringify({ enable: true }),
+        });
+        const data = await res.json();
+
+        if (data.success && data.otp_sent) {
+            // Show OTP confirmation box
+            document.getElementById('twoFaOtpBox').classList.remove('hidden');
+            document.getElementById('twoFaOtpHint').textContent =
+                `OTP sent to number ending in ${data.phone_hint}. Enter it to confirm.`;
+            showSecMsg('twoFaMsg', data.message, 'success');
+            document.getElementById('ta_o1').focus();
+        } else {
+            showSecMsg('twoFaMsg', data.message || data.error, 'error');
+
+            // If no phone — redirect to Profile tab
+            if (data.error === 'no_phone') {
+                setTimeout(() => {
+                    document.querySelectorAll('.tab')[0].click(); // Profile tab
+                    showToast('Please add your phone number first', 'warning');
+                }, 1500);
+            }
+        }
+    } catch (e) {
+        showSecMsg('twoFaMsg', 'Network error. Please try again.', 'error');
+    }
+}
+
+async function confirm2FA() {
+    const otp = ['ta_o1','ta_o2','ta_o3','ta_o4','ta_o5','ta_o6']
+        .map(id => document.getElementById(id).value).join('');
+
+    if (otp.length !== 6) {
+        showSecMsg('twoFaMsg', 'Please enter all 6 digits.', 'error');
+        return;
+    }
+
+    showSecMsg('twoFaMsg', 'Verifying OTP...', 'loading');
+
+    const csrf = getSecCsrf();
+    try {
+        const res  = await fetch('/2fa/confirm/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+            body: JSON.stringify({ otp }),
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            // Update UI to show 2FA enabled
+            document.getElementById('twoFaToggle').checked = true;
+            document.getElementById('twoFaStatus').textContent = '2FA Enabled';
+            document.getElementById('twoFaStatus').style.color = '#16a34a';
+            document.getElementById('twoFaBadge').innerHTML =
+                '<i class="fas fa-lock"></i> Enabled';
+            document.getElementById('twoFaOtpBox').classList.add('hidden');
+            showSecMsg('twoFaMsg', '', '');
+            if (typeof showToast === 'function')
+                showToast('🔐 2FA enabled successfully!', 'success');
+        } else {
+            showSecMsg('twoFaMsg', data.error || 'Invalid OTP.', 'error');
+            // Clear OTP cells
+            ['ta_o1','ta_o2','ta_o3','ta_o4','ta_o5','ta_o6'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) { el.value = ''; el.classList.remove('filled'); }
+            });
+        }
+    } catch (e) {
+        showSecMsg('twoFaMsg', 'Network error. Please try again.', 'error');
+    }
+}
+
+async function disable2FA() {
+    showSecMsg('twoFaMsg', 'Disabling 2FA...', 'loading');
+    const csrf = getSecCsrf();
+    try {
+        const res  = await fetch('/2fa/toggle/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+            body: JSON.stringify({ enable: false }),
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            document.getElementById('twoFaToggle').checked = false;
+            document.getElementById('twoFaStatus').textContent = '2FA Disabled';
+            document.getElementById('twoFaStatus').style.color = '#374151';
+            document.getElementById('twoFaBadge').innerHTML =
+                '<i class="fas fa-lock-open"></i> Disabled';
+            document.getElementById('twoFaOtpBox').classList.add('hidden');
+            showSecMsg('twoFaMsg', '', '');
+            if (typeof showToast === 'function')
+                showToast('2FA disabled.', 'info');
+        } else {
+            showSecMsg('twoFaMsg', data.error, 'error');
+            document.getElementById('twoFaToggle').checked = true; // revert
+        }
+    } catch (e) {
+        showSecMsg('twoFaMsg', 'Network error.', 'error');
+        document.getElementById('twoFaToggle').checked = true; // revert
+    }
+}
+
+function cancel2FA() {
+    document.getElementById('twoFaOtpBox').classList.add('hidden');
+    document.getElementById('twoFaToggle').checked = false;
+    showSecMsg('twoFaMsg', '', '');
+    ['ta_o1','ta_o2','ta_o3','ta_o4','ta_o5','ta_o6'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) { el.value = ''; el.classList.remove('filled'); }
+    });
 }

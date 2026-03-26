@@ -29,4 +29,14 @@ urlpatterns = [
     path('api/chat/clear/',     views.chat_clear_api,   name='chat_clear_api'),
     path('documents/passcode/', views.verify_doc_passcode, name='doc_passcode'),
     path('verify-otp-only/', views.verify_otp_only, name='verify_otp_only'),
+    path('save-settings/', views.save_settings_view, name='save_settings'),
+
+    # 2FA
+    path('2fa/verify/',  views.two_fa_verify_view, name='2fa_verify'),
+    path('2fa/resend/',  views.two_fa_resend_view,  name='2fa_resend'),
+    path('2fa/toggle/',  views.toggle_2fa_view,     name='2fa_toggle'),
+    path('2fa/confirm/', views.confirm_2fa_view,    name='2fa_confirm'),
+
+    path('ping/', views.ping_view, name='ping'),
+    path('keep-alive/', views.keep_alive_view, name='keep_alive'),
 ]

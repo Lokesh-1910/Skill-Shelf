@@ -16,9 +16,6 @@ function switchTab(tabName) {
 
 
 // ===== PROFILE COMPLETION =====
-// Reads the CURRENT value of every form field in the profile tab.
-// Fields that are already filled from the DB count immediately on page load.
-
 const PROFILE_FIELDS = [
     { id: 'fullName',    label: 'Full Name'    },
     { id: 'email',       label: 'Email'        },
@@ -36,10 +33,7 @@ function calculateCompletion() {
     PROFILE_FIELDS.forEach(function(f) {
         const el = document.getElementById(f.id);
         if (!el) return;
-
         const val = el.value ? el.value.trim() : '';
-
-        // For select dropdowns, ignore the blank placeholder option
         if (el.tagName === 'SELECT') {
             if (val !== '') filled++;
         } else {
@@ -47,7 +41,6 @@ function calculateCompletion() {
         }
     });
 
-    // Profile photo counts as one extra field
     const totalFields = PROFILE_FIELDS.length + 1;
     const hasPhoto    = document.getElementById('profileAvatarImg') !== null;
     if (hasPhoto) filled++;
@@ -56,28 +49,26 @@ function calculateCompletion() {
 }
 
 function updateCompletionBar() {
-    const percent     = calculateCompletion();
-    const percentEl   = document.getElementById('completionPercent');
-    const progressEl  = document.getElementById('progressFill');
+    const percent    = calculateCompletion();
+    const percentEl  = document.getElementById('completionPercent');
+    const progressEl = document.getElementById('progressFill');
 
     if (!percentEl || !progressEl) return;
 
-    percentEl.textContent   = percent + '%';
-    progressEl.style.width  = percent + '%';
+    percentEl.textContent  = percent + '%';
+    progressEl.style.width = percent + '%';
 
-    // Colour changes based on how complete the profile is
     if (percent < 30) {
-        progressEl.style.background = '#ef4444';       // red
+        progressEl.style.background = '#ef4444';
     } else if (percent < 60) {
-        progressEl.style.background = '#f59e0b';       // amber
+        progressEl.style.background = '#f59e0b';
     } else if (percent < 100) {
-        progressEl.style.background = '#3b82f6';       // blue
+        progressEl.style.background = '#3b82f6';
     } else {
-        progressEl.style.background = 'linear-gradient(90deg, #2563eb, #10b981)'; // green
+        progressEl.style.background = 'linear-gradient(90deg, #2563eb, #10b981)';
     }
 }
 
-// Live update while user types in the profile form
 function attachLiveCompletion() {
     PROFILE_FIELDS.forEach(function(f) {
         const el = document.getElementById(f.id);
@@ -105,7 +96,6 @@ function previewPhoto(event) {
 
     const reader = new FileReader();
     reader.onload = function(e) {
-        // Replace initials div with an <img> for the preview
         let img = document.getElementById('profileAvatarImg');
         if (!img) {
             img = document.createElement('img');
@@ -116,9 +106,8 @@ function previewPhoto(event) {
             if (old) old.replaceWith(img);
         }
         img.src = e.target.result;
-
         showToast('Photo selected — click Save Changes to upload', 'info');
-        updateCompletionBar(); // photo now counts toward completion
+        updateCompletionBar();
     };
     reader.readAsDataURL(file);
 }
@@ -139,8 +128,7 @@ function checkPasswordStrength(value) {
     document.getElementById('reqLower').className  = hasLower  ? 'text-success' : 'text-danger';
     document.getElementById('reqNumber').className = hasNumber ? 'text-success' : 'text-danger';
 
-    const score = [hasLength, hasUpper, hasLower, hasNumber].filter(Boolean).length;
-
+    const score  = [hasLength, hasUpper, hasLower, hasNumber].filter(Boolean).length;
     const levels = [
         { w: '0%',   bg: '#e5e7eb', label: 'Enter a password to check strength', color: '#6b7280' },
         { w: '25%',  bg: '#ef4444', label: 'Weak',   color: '#ef4444' },
@@ -148,7 +136,6 @@ function checkPasswordStrength(value) {
         { w: '75%',  bg: '#3b82f6', label: 'Good',   color: '#3b82f6' },
         { w: '100%', bg: '#10b981', label: 'Strong', color: '#10b981' },
     ];
-
     const level = value.length === 0 ? levels[0] : levels[score];
     fill.style.width      = level.w;
     fill.style.background = level.bg;
@@ -166,23 +153,178 @@ function validatePasswordMatch() {
 
 
 // ===== DARK MODE =====
+// ── SESSION ONLY: does NOT persist across page navigation ──
+// localStorage is intentionally NOT used here per requirements.
 function toggleDarkMode(checkbox) {
     document.body.classList.toggle('dark-mode', checkbox.checked);
-    document.getElementById('themeStatus').textContent =
-        checkbox.checked ? 'Dark Mode' : 'Light Mode';
-    // Persist theme preference in localStorage (UI pref only, not user data)
-    localStorage.setItem('skillshelf_theme', checkbox.checked ? 'dark' : 'light');
-    showToast(checkbox.checked ? 'Dark mode enabled' : 'Light mode enabled', 'success');
+    const status = document.getElementById('themeStatus');
+    if (status) {
+        status.textContent = checkbox.checked ? 'Dark Mode' : 'Light Mode';
+    }
+    // NOTE: We do NOT save to localStorage — dark mode is session/page only.
+    // When user navigates away or refreshes, it resets to Light Mode.
+    showToast(
+        checkbox.checked ? '🌙 Dark mode enabled (this page only)' : '☀️ Light mode enabled',
+        'info'
+    );
 }
 
-function applySavedTheme() {
-    const saved  = localStorage.getItem('skillshelf_theme');
+// ── On page load: do NOT apply any saved theme — always start Light ──
+// (This replaces the old applySavedTheme function which used localStorage)
+function initTheme() {
+    // Always start in light mode — dark mode is temporary/per-page only
     const toggle = document.getElementById('darkModeToggle');
-    if (saved === 'dark') {
-        document.body.classList.add('dark-mode');
-        if (toggle) toggle.checked = true;
-        const status = document.getElementById('themeStatus');
-        if (status) status.textContent = 'Dark Mode';
+    if (toggle) toggle.checked = false;
+    document.body.classList.remove('dark-mode');
+}
+
+
+// ===== NOTIFICATION TOGGLES =====
+// Only one can be active at a time (email OR sms).
+// Preference is saved to the database via AJAX.
+
+var _savingNotif = false; // prevent double-clicks
+
+function handleNotifToggle(type, checkbox) {
+    if (_savingNotif) {
+        // Prevent rapid toggling while saving
+        checkbox.checked = !checkbox.checked;
+        return;
+    }
+
+    const emailToggle = document.getElementById('emailNotifications');
+    const smsToggle   = document.getElementById('smsNotifications');
+    const emailRow    = document.getElementById('emailNotifRow');
+    const smsRow      = document.getElementById('smsNotifRow');
+
+    // Determine what the new preference should be
+    let newPreference;
+
+    if (!checkbox.checked) {
+        // User turned OFF the current method → set to 'none'
+        newPreference = 'none';
+    } else {
+        // User turned ON this method → turn the other OFF
+        newPreference = type;
+
+        if (type === 'email') {
+            // Turn off SMS
+            if (smsToggle) smsToggle.checked = false;
+            if (smsRow)    smsRow.classList.remove('notif-active');
+            if (smsRow)    smsRow.classList.add('notif-inactive');
+        } else if (type === 'sms') {
+            // Turn off Email
+            if (emailToggle) emailToggle.checked = false;
+            if (emailRow)    emailRow.classList.remove('notif-active');
+            if (emailRow)    emailRow.classList.add('notif-inactive');
+        }
+    }
+
+    // Update active/inactive styles
+    if (newPreference === 'email') {
+        if (emailRow) { emailRow.classList.add('notif-active'); emailRow.classList.remove('notif-inactive'); }
+        if (smsRow)   { smsRow.classList.remove('notif-active'); smsRow.classList.add('notif-inactive'); }
+    } else if (newPreference === 'sms') {
+        if (smsRow)   { smsRow.classList.add('notif-active'); smsRow.classList.remove('notif-inactive'); }
+        if (emailRow) { emailRow.classList.remove('notif-active'); emailRow.classList.add('notif-inactive'); }
+    } else {
+        // none — both inactive
+        if (emailRow) { emailRow.classList.remove('notif-active'); emailRow.classList.add('notif-inactive'); }
+        if (smsRow)   { smsRow.classList.remove('notif-active'); smsRow.classList.add('notif-inactive'); }
+    }
+
+    // Save to database
+    saveNotificationPreference(newPreference);
+}
+
+function saveNotificationPreference(preference) {
+    _savingNotif = true;
+
+    const statusBar  = document.getElementById('notifStatusBar');
+    const statusText = document.getElementById('notifStatusText');
+
+    // Show saving indicator
+    if (statusBar)  statusBar.className = 'notif-status-bar warning';
+    if (statusText) statusText.textContent = '⏳ Saving preference...';
+
+    const csrf = document.querySelector('[name=csrfmiddlewaretoken]');
+    const csrfToken = csrf ? csrf.value : getCookie('csrftoken');
+
+    fetch('/save-settings/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken':  csrfToken,
+        },
+        body: JSON.stringify({ notification: preference }),
+    })
+    .then(function(resp) { return resp.json(); })
+    .then(function(data) {
+        _savingNotif = false;
+
+        if (data.success) {
+            // Update status bar
+            if (statusBar)  statusBar.className = 'notif-status-bar';
+
+            if (preference === 'email') {
+                if (statusText) statusText.textContent = '✅ Email notifications are currently active.';
+                showToast('📧 Email notifications enabled', 'success');
+            } else if (preference === 'sms') {
+                if (statusText) statusText.textContent = '✅ SMS notifications are currently active.';
+                showToast('📱 SMS notifications enabled', 'success');
+            } else {
+                if (statusBar)  statusBar.className = 'notif-status-bar warning';
+                if (statusText) statusText.textContent = '⚠️ All notifications are turned off.';
+                showToast('🔕 Notifications disabled', 'warning');
+            }
+        } else {
+            // Server rejected — revert the toggle
+            revertToggles(preference);
+            if (statusBar)  statusBar.className = 'notif-status-bar warning';
+            if (statusText) statusText.textContent = '❌ ' + (data.error || 'Failed to save.');
+            showToast(data.error || 'Failed to save notification preference', 'error');
+        }
+    })
+    .catch(function(err) {
+        _savingNotif = false;
+        revertToggles(preference);
+        if (statusText) statusText.textContent = '❌ Network error. Please try again.';
+        showToast('Network error. Please try again.', 'error');
+    });
+}
+
+function revertToggles(failedPreference) {
+    // If save failed, revert toggles to previous state
+    const emailToggle = document.getElementById('emailNotifications');
+    const smsToggle   = document.getElementById('smsNotifications');
+    const emailRow    = document.getElementById('emailNotifRow');
+    const smsRow      = document.getElementById('smsNotifRow');
+
+    // Just turn both off — user can re-select
+    if (emailToggle) emailToggle.checked = false;
+    if (smsToggle)   smsToggle.checked   = false;
+    if (emailRow)    emailRow.classList.remove('notif-active');
+    if (smsRow)      smsRow.classList.remove('notif-active');
+}
+
+function initNotifRowStyles() {
+    // On page load, apply correct active/inactive styles based on DB value
+    const emailToggle = document.getElementById('emailNotifications');
+    const smsToggle   = document.getElementById('smsNotifications');
+    const emailRow    = document.getElementById('emailNotifRow');
+    const smsRow      = document.getElementById('smsNotifRow');
+
+    if (!emailToggle || !smsToggle) return;
+
+    if (emailToggle.checked) {
+        if (emailRow) { emailRow.classList.add('notif-active'); emailRow.classList.remove('notif-inactive'); }
+        if (smsRow)   { smsRow.classList.remove('notif-active'); smsRow.classList.add('notif-inactive'); }
+    } else if (smsToggle.checked) {
+        if (smsRow)   { smsRow.classList.add('notif-active'); smsRow.classList.remove('notif-inactive'); }
+        if (emailRow) { emailRow.classList.remove('notif-active'); emailRow.classList.add('notif-inactive'); }
+    } else {
+        if (emailRow) emailRow.classList.add('notif-inactive');
+        if (smsRow)   smsRow.classList.add('notif-inactive');
     }
 }
 
@@ -204,7 +346,6 @@ function showToast(message, type) {
         info:    'ℹ',
     };
 
-    // Create or reuse toast container
     let container = document.getElementById('toastContainer');
     if (!container) {
         container = document.createElement('div');
@@ -242,6 +383,23 @@ function showToast(message, type) {
 }
 
 
+// ===== HELPER: Get CSRF cookie =====
+function getCookie(name) {
+    var cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        var cookies = document.cookie.split(';');
+        for (var i = 0; i < cookies.length; i++) {
+            var cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+
 // ===== INJECT TOAST ANIMATIONS =====
 (function injectToastStyles() {
     if (document.getElementById('toastStyles')) return;
@@ -270,27 +428,18 @@ document.addEventListener('DOMContentLoaded', function () {
     // 2. Live-update completion as user edits fields
     attachLiveCompletion();
 
-    // 3. Apply saved dark mode theme preference
-    applySavedTheme();
+    // 3. Always start in Light Mode (dark mode is session/page only)
+    initTheme();
 
-    // 4. Show success/error toast if Django added a flash message
-    //    (reads from a data attribute we set on <body>)
-    const body = document.body;
+    // 4. Apply correct notification row styles from DB value
+    initNotifRowStyles();
+
+    // 5. Show Django flash message as toast
+    const body      = document.body;
     const flashMsg  = body.getAttribute('data-flash-msg');
     const flashType = body.getAttribute('data-flash-type');
     if (flashMsg) {
         showToast(flashMsg, flashType || 'info');
     }
-
-    // 5. Notification toggle feedback
-    ['emailNotifications', 'smsNotifications'].forEach(function(id) {
-        const el = document.getElementById(id);
-        if (el) {
-            el.addEventListener('change', function() {
-                const label = id === 'emailNotifications' ? 'Email' : 'SMS';
-                showToast(label + ' notifications ' + (this.checked ? 'enabled' : 'disabled'), 'info');
-            });
-        }
-    });
 
 });

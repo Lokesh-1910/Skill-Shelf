@@ -9,13 +9,14 @@ import json
 import requests
 from django.db.models import Q, Count, Sum
 from django.utils import timezone
-from .models import User, Document,OTPVerification
+from .models import User, Document, OTPVerification
 import os
 from django.views.decorators.http import require_POST
 from .chatbot import chat as ai_chat, get_expiry_warnings
 from .models import User, Document, ChatMessage
 from django.core.mail import send_mail
 from django.conf import settings
+
 
 # ─────────────────────────────────────────────
 # HELPER
@@ -29,6 +30,111 @@ def no_cache(response):
 
 
 # ─────────────────────────────────────────────
+# LOGIN NOTIFICATION — Email or SMS
+# Called after every successful login
+# ─────────────────────────────────────────────
+
+def send_login_notification(user, request):
+    """
+    Sends a login alert via Email or SMS depending on user's
+    notification_preference. If preference is 'none', no alert is sent.
+    """
+    preference = getattr(user, 'notification_preference', 'email')
+
+    if preference == 'none':
+        return  # User opted out of all notifications
+
+    # ── Gather login details ──
+    x_forwarded = request.META.get('HTTP_X_FORWARDED_FOR')
+    ip = x_forwarded.split(',')[0] if x_forwarded else request.META.get('REMOTE_ADDR', 'Unknown')
+
+    user_agent = request.META.get('HTTP_USER_AGENT', '')
+
+    if 'Mobile' in user_agent or 'Android' in user_agent:
+        device = 'Mobile'
+    elif 'Tablet' in user_agent or 'iPad' in user_agent:
+        device = 'Tablet'
+    else:
+        device = 'Desktop / Laptop'
+
+    if 'Chrome' in user_agent and 'Edg' not in user_agent:
+        browser = 'Google Chrome'
+    elif 'Firefox' in user_agent:
+        browser = 'Mozilla Firefox'
+    elif 'Safari' in user_agent and 'Chrome' not in user_agent:
+        browser = 'Safari'
+    elif 'Edg' in user_agent:
+        browser = 'Microsoft Edge'
+    else:
+        browser = 'Unknown Browser'
+
+    login_time = timezone.localtime(timezone.now()).strftime('%d %B %Y, %I:%M %p')
+
+    # ── Send Email notification ──
+    if preference == 'email':
+        try:
+            send_mail(
+                subject='🔐 Skill Shelf — New Login Detected on Your Account',
+                message=(
+                    f"Hello {user.full_name},\n\n"
+                    f"A recent login activity was detected on your Skill Shelf account.\n\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"  LOGIN DETAILS\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"  📅 Date & Time  : {login_time}\n"
+                    f"  🌐 IP Address   : {ip}\n"
+                    f"  💻 Device       : {device}\n"
+                    f"  🌍 Browser      : {browser}\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                    f"✅ Is this you?\n"
+                    f"   No action needed. You can ignore this email.\n\n"
+                    f"❌ Not you?\n"
+                    f"   Immediately secure your account:\n"
+                    f"   → Change your password now\n"
+                    f"   → Enable Two Factor Authentication (2FA)\n\n"
+                    f"Stay safe,\n"
+                    f"Skill Shelf Security Team"
+                ),
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[user.email],
+                fail_silently=True,
+            )
+        except Exception:
+            pass  # Never block login because of email failure
+
+    elif preference == 'sms':
+        try:
+            if not user.phone:
+                return
+
+            from twilio.rest import Client
+
+            client = Client(
+                settings.TWILIO_ACCOUNT_SID,
+                settings.TWILIO_AUTH_TOKEN,
+            )
+
+            login_time = timezone.localtime(
+                timezone.now()
+            ).strftime('%d %B %Y, %I:%M %p')
+
+            sms_body = (
+                f"[Skill Shelf] A new sign-in to your account "
+                f"was detected on {login_time}. "
+                f"If this was you, ignore this message. "
+                f"If not, secure your account immediately."
+            )
+
+            # Send SMS using your Twilio phone number
+            client.messages.create(
+                body  = sms_body,
+                from_ = settings.TWILIO_PHONE_NUMBER,
+                to    = f"+91{user.phone}",
+            )
+
+        except Exception as e:
+            pass  # Never block login due to SMS failure
+# ─────────────────────────────────────────────
 # PAGE VIEW  — welcome
 # ─────────────────────────────────────────────
 
@@ -41,16 +147,15 @@ def page_view(request, page):
         return redirect('welcome')
     return render(request, template)
 
+
 # ─────────────────────────────────────────────
-# REGISTER — 
+# REGISTER
 # ─────────────────────────────────────────────
 
-# Step 1: collect details, send OTP
 def register_view(request):
     if request.method == "POST":
         action = request.POST.get("action")
 
-        # ── STEP 1: Send OTP ──
         if action == "send_otp":
             full_name  = request.POST.get("name", "").strip()
             email      = request.POST.get("email", "").strip()
@@ -58,7 +163,6 @@ def register_view(request):
             confirm    = request.POST.get("confirm", "")
             student_id = request.POST.get("student", "").strip()
 
-            # Validations
             if not full_name or not email or not password:
                 messages.error(request, "Full name, email and password are required.")
                 return render(request, "register.html")
@@ -72,7 +176,6 @@ def register_view(request):
                 messages.error(request, "An account with this email already exists.")
                 return render(request, "register.html")
 
-            # Store form data temporarily in session
             request.session['pending_registration'] = {
                 'full_name':  full_name,
                 'email':      email,
@@ -80,15 +183,11 @@ def register_view(request):
                 'student_id': student_id,
             }
 
-            # Generate and send OTP
-            # Create a temp user object just for OTP
-            # (we use a dummy approach — store OTP in session)
             import random
             otp = str(random.randint(100000, 999999))
-            request.session['register_otp']    = otp
-            request.session['register_email']  = email
+            request.session['register_otp']   = otp
+            request.session['register_email'] = email
 
-            # Send OTP email
             try:
                 send_mail(
                     subject='Verify your Skill Shelf account',
@@ -111,7 +210,6 @@ def register_view(request):
                 messages.error(request, f'Failed to send OTP: {str(e)}')
                 return render(request, "register.html")
 
-        # ── STEP 2: Verify OTP and create account ──
         elif action == "verify_otp":
             entered_otp = request.POST.get("otp", "").strip()
             saved_otp   = request.session.get('register_otp')
@@ -129,7 +227,6 @@ def register_view(request):
                     'email': email,
                 })
 
-            # OTP correct — create the account
             User.objects.create_user(
                 email      = pending['email'],
                 password   = pending['password'],
@@ -137,7 +234,6 @@ def register_view(request):
                 student_id = pending['student_id'],
             )
 
-            # Clear session data
             del request.session['pending_registration']
             del request.session['register_otp']
             del request.session['register_email']
@@ -145,11 +241,10 @@ def register_view(request):
             messages.success(request, "Email verified! Account created. Please log in.")
             return redirect("login")
 
-        # ── RESEND OTP ──
         elif action == "resend_otp":
             import random
-            email     = request.session.get('register_email')
-            pending   = request.session.get('pending_registration')
+            email   = request.session.get('register_email')
+            pending = request.session.get('pending_registration')
 
             if not email or not pending:
                 messages.error(request, "Session expired. Please register again.")
@@ -180,8 +275,10 @@ def register_view(request):
             })
 
     return render(request, "register.html")
+
+
 # ─────────────────────────────────────────────
-# LOGIN
+# LOGIN — with notification on success
 # ─────────────────────────────────────────────
 
 @never_cache
@@ -195,9 +292,37 @@ def login_view(request):
         user     = authenticate(request, username=email, password=password)
 
         if user is not None:
-            login(request, user)
-            next_url = request.POST.get("next") or request.GET.get("next") or "dashboard"
-            return redirect(next_url)
+            if user.is_2fa_enabled:
+                # Don't login yet — send OTP first via Twilio Verify
+                if not user.phone:
+                    messages.error(request, "2FA is enabled but no phone number found. Please contact support.")
+                    return no_cache(render(request, "login.html"))
+
+                try:
+                    from twilio.rest import Client
+                    client = Client(
+                        settings.TWILIO_ACCOUNT_SID,
+                        settings.TWILIO_AUTH_TOKEN,
+                    )
+                    client.verify.v2 \
+                        .services(settings.TWILIO_VERIFY_SERVICE_SID) \
+                        .verifications \
+                        .create(to=f"+91{user.phone}", channel="sms")
+                except Exception as e:
+                    messages.error(request, f"Failed to send OTP: {str(e)}")
+                    return no_cache(render(request, "login.html"))
+
+                # Store user id in session temporarily — don't login yet
+                request.session['2fa_user_id']   = user.id
+                request.session['2fa_next_url']  = request.POST.get("next") or "dashboard"
+                return redirect('2fa_verify')
+
+            else:
+                # 2FA not enabled — login directly as before
+                login(request, user)
+                send_login_notification(user, request)
+                next_url = request.POST.get("next") or request.GET.get("next") or "dashboard"
+                return redirect(next_url)
         else:
             messages.error(request, "Invalid email or password.")
 
@@ -229,13 +354,11 @@ def logout_view(request):
 def dashboard_view(request):
     docs = Document.objects.filter(owner=request.user)
 
-    # Stats
-    total_docs    = docs.count()
-    total_size    = docs.aggregate(s=Sum('file_size'))['s'] or 0
-    recent_docs   = docs.order_by('-uploaded_at')[:4]
+    total_docs      = docs.count()
+    total_size      = docs.aggregate(s=Sum('file_size'))['s'] or 0
+    recent_docs     = docs.order_by('-uploaded_at')[:4]
     categories_used = docs.values('category').distinct().count()
 
-    # Total size display
     size_mb = total_size / (1024 * 1024)
     if size_mb >= 1024:
         size_display = f"{size_mb/1024:.1f} GB"
@@ -243,21 +366,21 @@ def dashboard_view(request):
         size_display = f"{size_mb:.1f} MB"
 
     context = {
-        'user':           request.user,
-        'total_docs':     total_docs,
-        'categories_used': categories_used,
-        'recent_docs':    recent_docs,
-        'size_display':   size_display,
-        'recent_count':   docs.filter(
+        'user':             request.user,
+        'total_docs':       total_docs,
+        'categories_used':  categories_used,
+        'recent_docs':      recent_docs,
+        'size_display':     size_display,
+        'recent_count':     docs.filter(
             uploaded_at__gte=timezone.now() - timezone.timedelta(days=7)
         ).count(),
-        'categories':     Document.CATEGORY_CHOICES,
+        'categories':       Document.CATEGORY_CHOICES,
     }
     return no_cache(render(request, "dashboard.html", context))
 
 
 # ─────────────────────────────────────────────
-# DOCUMENTS  — list + filter + search
+# DOCUMENTS
 # ─────────────────────────────────────────────
 
 @never_cache
@@ -267,9 +390,7 @@ def documents_view(request):
     has_passcode = bool(user.doc_passcode)
     is_unlocked  = request.session.get('doc_unlocked', False)
 
-    # ── Passcode gate ──
     if not has_passcode:
-    # First time — show page with setup modal
         context = {
             'user':           request.user,
             'needs_passcode': True,
@@ -286,7 +407,6 @@ def documents_view(request):
         return no_cache(render(request, 'document.html', context))
 
     if has_passcode and not is_unlocked:
-        # Has passcode but not verified this session
         context = {
             'user':           request.user,
             'needs_passcode': True,
@@ -302,7 +422,6 @@ def documents_view(request):
         }
         return no_cache(render(request, 'document.html', context))
 
-    # ── Unlocked — show documents ──
     docs = Document.objects.filter(owner=request.user)
 
     q = request.GET.get('q', '').strip()
@@ -397,7 +516,7 @@ def documents_view(request):
 
 
 # ─────────────────────────────────────────────
-# UPLOAD  — GET: show form  POST: save file
+# UPLOAD
 # ─────────────────────────────────────────────
 
 @never_cache
@@ -434,14 +553,10 @@ def upload_view(request):
         messages.success(request, f"{saved} document(s) uploaded successfully.")
         return redirect("documents")
 
-    # Calculate storage used for display
     total_bytes = Document.objects.filter(owner=request.user).aggregate(
         s=Sum('file_size'))['s'] or 0
     mb = total_bytes / (1024 * 1024)
-    if mb >= 1024:
-        storage_used = f"{mb/1024:.1f} GB"
-    else:
-        storage_used = f"{mb:.1f} MB"
+    storage_used = f"{mb/1024:.1f} GB" if mb >= 1024 else f"{mb:.1f} MB"
 
     context = {
         'user':         request.user,
@@ -453,8 +568,7 @@ def upload_view(request):
 
 
 # ─────────────────────────────────────────────
-# AJAX UPLOAD  — called by fetch() in upload.js
-# Returns JSON so the JS progress bar can work
+# AJAX UPLOAD
 # ─────────────────────────────────────────────
 
 @never_cache
@@ -471,7 +585,6 @@ def upload_ajax_view(request):
 
     if not files:
         return JsonResponse({'error': 'No files provided'}, status=400)
-
     if not category:
         return JsonResponse({'error': 'Category is required'}, status=400)
 
@@ -487,29 +600,16 @@ def upload_ajax_view(request):
                 description = description,
                 file        = f,
             )
-            results.append({
-                'name':    f.name,
-                'status':  'success',
-                'size':    doc.file_size_display,
-                'id':      doc.id,
-            })
+            results.append({'name': f.name, 'status': 'success', 'size': doc.file_size_display, 'id': doc.id})
         except Exception as e:
-            results.append({
-                'name':   f.name,
-                'status': 'failed',
-                'error':  str(e),
-            })
+            results.append({'name': f.name, 'status': 'failed', 'error': str(e)})
 
     success_count = sum(1 for r in results if r['status'] == 'success')
-    return JsonResponse({
-        'results':       results,
-        'success_count': success_count,
-        'total':         len(files),
-    })
+    return JsonResponse({'results': results, 'success_count': success_count, 'total': len(files)})
 
 
 # ─────────────────────────────────────────────
-# DOCUMENT DETAIL  — view single doc info
+# DOCUMENT DETAIL / DOWNLOAD / DELETE
 # ─────────────────────────────────────────────
 
 @never_cache
@@ -519,28 +619,18 @@ def document_detail_view(request, doc_id):
     return no_cache(render(request, "document_detail.html", {'doc': doc, 'user': request.user}))
 
 
-# ─────────────────────────────────────────────
-# DOCUMENT DOWNLOAD
-# ─────────────────────────────────────────────
-
 @login_required(login_url='login')
 def document_download_view(request, doc_id):
     doc = get_object_or_404(Document, id=doc_id, owner=request.user)
     if not doc.file:
         raise Http404
-    response = FileResponse(doc.file.open('rb'), as_attachment=True, filename=doc.file_name)
-    return response
+    return FileResponse(doc.file.open('rb'), as_attachment=True, filename=doc.file_name)
 
-
-# ─────────────────────────────────────────────
-# DOCUMENT DELETE
-# ─────────────────────────────────────────────
 
 @login_required(login_url='login')
 def document_delete_view(request, doc_id):
     doc = get_object_or_404(Document, id=doc_id, owner=request.user)
     if request.method == "POST":
-        # Delete physical file too
         if doc.file and os.path.isfile(doc.file.path):
             os.remove(doc.file.path)
         doc.delete()
@@ -553,9 +643,6 @@ def document_delete_view(request, doc_id):
 # PROFILE
 # ─────────────────────────────────────────────
 
-# ─────────────────────────────────────────────
-# PROFILE VIEW (Updated for Security Tab)
-# ─────────────────────────────────────────────
 @never_cache
 @login_required(login_url='login')
 def profile_view(request):
@@ -564,7 +651,6 @@ def profile_view(request):
     if request.method == "POST":
         action = request.POST.get("action")
 
-        # ====================== SAVE PROFILE ======================
         if action == "save_profile":
             user.full_name   = request.POST.get("fullName", user.full_name).strip()
             user.email       = request.POST.get("email", user.email).strip()
@@ -584,7 +670,6 @@ def profile_view(request):
             messages.success(request, "Profile updated successfully.")
             return redirect("profile")
 
-        # ====================== CHANGE PASSWORD (After OTP) ======================
         elif action == "change_password":
             new_pw  = request.POST.get("newPassword", "").strip()
             confirm = request.POST.get("confirmPassword", "").strip()
@@ -592,44 +677,80 @@ def profile_view(request):
             if not new_pw or not confirm:
                 messages.error(request, "Both password fields are required.")
                 return redirect("profile")
-
             if new_pw != confirm:
                 messages.error(request, "New passwords do not match.")
                 return redirect("profile")
-
             if len(new_pw) < 8:
                 messages.error(request, "Password must be at least 8 characters long.")
                 return redirect("profile")
 
-            # Update password
             user.set_password(new_pw)
             user.save()
-
-            # Important: Update session so user doesn't get logged out
             update_session_auth_hash(request, user)
-
             messages.success(request, "Password changed successfully!")
             return redirect("profile")
 
-        # ====================== CHANGE PASSCODE (After OTP) ======================
         elif action == "change_passkey":
             new_code = request.POST.get("passkey", "").strip()
-
             if not new_code or len(new_code) != 4 or not new_code.isdigit():
                 messages.error(request, "Passkey must be a valid 4-digit number.")
                 return redirect("profile")
-
             user.doc_passcode = new_code
             user.save()
             messages.success(request, "Document Passkey updated successfully!")
             return redirect("profile")
 
-    # GET request - render page
     context = {
-        "user": user,
-        "categories": Document.CATEGORY_CHOICES,   # if needed
+        "user":       user,
+        "categories": Document.CATEGORY_CHOICES,
     }
     return no_cache(render(request, "profile.html", context))
+
+
+# ─────────────────────────────────────────────
+# SAVE SETTINGS — Notification preference
+# AJAX endpoint called from profile.js
+# ─────────────────────────────────────────────
+
+@require_POST
+@login_required(login_url='login')
+def save_settings_view(request):
+    """
+    Saves notification_preference to the database.
+    Accepts JSON: { "notification": "email" | "sms" | "none" }
+    Returns JSON: { "success": true } or { "error": "..." }
+    """
+    try:
+        data         = json.loads(request.body)
+        notification = data.get('notification', 'none')
+
+        # Validate
+        valid_options = ['email', 'sms', 'none']
+        if notification not in valid_options:
+            return JsonResponse({'error': 'Invalid notification preference.'}, status=400)
+
+        # If SMS is selected, make sure phone number exists
+        if notification == 'sms' and not request.user.phone:
+            return JsonResponse({
+                'error': 'Please add your phone number in Profile tab before enabling SMS notifications.'
+            }, status=400)
+
+        # Save preference to database
+        request.user.notification_preference = notification
+        request.user.save(update_fields=['notification_preference'])
+
+        label_map = {'email': 'Email', 'sms': 'SMS', 'none': 'None'}
+        return JsonResponse({
+            'success': True,
+            'message': f'Notification preference saved: {label_map[notification]}',
+            'preference': notification,
+        })
+
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid request.'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
 
 # ─────────────────────────────────────────────
 # CHAT PAGE
@@ -648,7 +769,7 @@ def chat_view(request):
 
 
 # ─────────────────────────────────────────────
-# CHAT API  — permanent memory per user
+# CHAT API
 # ─────────────────────────────────────────────
 
 @require_POST
@@ -669,7 +790,6 @@ def chat_api(request):
             except (Document.DoesNotExist, ValueError):
                 doc_id = None
 
-        # ── Load full chat history from DB ──────────────────────
         past = ChatMessage.objects.filter(
             owner=request.user
         ).order_by('-created_at')[:40]
@@ -683,11 +803,9 @@ def chat_api(request):
             for m in past
         ]
 
-        # ── Get AI reply ────────────────────────────────────────
         reply    = ai_chat(request.user, message, history, target_doc_id=doc_id)
         warnings = get_expiry_warnings(request.user)
 
-        # ── Save both messages to DB permanently ────────────────
         ChatMessage.objects.create(owner=request.user, role='user', message=message)
         ChatMessage.objects.create(owner=request.user, role='bot',  message=reply)
 
@@ -699,13 +817,8 @@ def chat_api(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 
-# ─────────────────────────────────────────────
-# CHAT HISTORY API  — load past messages for widget
-# ─────────────────────────────────────────────
-
 @login_required(login_url='login')
 def chat_history_api(request):
-    """Returns the last 50 messages for the logged-in user."""
     msgs = ChatMessage.objects.filter(
         owner=request.user
     ).order_by('-created_at')[:50]
@@ -723,14 +836,9 @@ def chat_history_api(request):
     return JsonResponse({'messages': data})
 
 
-# ─────────────────────────────────────────────
-# CLEAR CHAT HISTORY API
-# ─────────────────────────────────────────────
-
 @require_POST
 @login_required(login_url='login')
 def chat_clear_api(request):
-    """Deletes all chat history for the logged-in user."""
     ChatMessage.objects.filter(owner=request.user).delete()
     return JsonResponse({'status': 'cleared'})
 
@@ -738,25 +846,24 @@ def chat_clear_api(request):
 # ─────────────────────────────────────────────
 # SEND OTP FOR SECURITY (Password / Passkey)
 # ─────────────────────────────────────────────
+
 @csrf_exempt
 def send_otp_view(request):
     if request.method != "POST":
         return JsonResponse({'error': 'POST required'}, status=405)
 
     try:
-        data = json.loads(request.body)
+        data   = json.loads(request.body)
         method = data.get('method')
 
-        # Use logged-in user directly (no need for email in body)
         if not request.user.is_authenticated:
             return JsonResponse({'error': 'User not logged in.'}, status=401)
 
-        user = request.user
+        user  = request.user
         value = user.email if method == 'email' else user.phone
 
         otp = OTPVerification.generate_otp()
 
-        # Delete old unused OTPs
         OTPVerification.objects.filter(user=user, method=method, is_used=False).delete()
         OTPVerification.objects.create(user=user, otp=otp, method=method)
 
@@ -774,14 +881,14 @@ def send_otp_view(request):
                 return JsonResponse({'error': f'Email failed: {str(e)}'}, status=500)
 
         elif method == 'mobile':
-            # Your existing Twilio code here (unchanged)
             pass
 
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
-    
+
+
 # ─────────────────────────────────────────────
-# VERIFY OTP  — login user after OTP check
+# VERIFY OTP
 # ─────────────────────────────────────────────
 
 @csrf_exempt
@@ -795,14 +902,10 @@ def verify_otp_view(request):
     otp    = data.get('otp', '').strip()
 
     try:
-        if method == 'email':
-            user = User.objects.get(email=value)
-        else:
-            user = User.objects.get(phone=value)
+        user = User.objects.get(email=value) if method == 'email' else User.objects.get(phone=value)
     except User.DoesNotExist:
         return JsonResponse({'error': 'User not found.'}, status=404)
 
-    # Find latest unused OTP
     try:
         otp_obj = OTPVerification.objects.filter(
             user=user, method=method, is_used=False
@@ -812,15 +915,12 @@ def verify_otp_view(request):
 
     if otp_obj.is_expired():
         return JsonResponse({'error': 'OTP has expired. Please request a new one.'}, status=400)
-
     if otp_obj.otp != otp:
         return JsonResponse({'error': 'Invalid OTP. Please try again.'}, status=400)
 
-    # Mark OTP as used
     otp_obj.is_used = True
     otp_obj.save()
 
-    # Log the user in
     from django.contrib.auth import login
     user.backend = 'django.contrib.auth.backends.ModelBackend'
     login(request, user)
@@ -828,19 +928,11 @@ def verify_otp_view(request):
     return JsonResponse({'success': True, 'redirect': '/dashboard/'})
 
 
-# ─────────────────────────────────────────────
-# RESEND OTP
-# ─────────────────────────────────────────────
-
-
 @csrf_exempt
 def resend_otp_view(request):
-    # Just call send_otp_view again
     return send_otp_view(request)
 
-# ─────────────────────────────────────────────
-# VERIFY OTP ONLY (for Password & Passkey)
-# ─────────────────────────────────────────────
+
 @csrf_exempt
 def verify_otp_only(request):
     if request.method != "POST":
@@ -848,24 +940,21 @@ def verify_otp_only(request):
 
     try:
         data = json.loads(request.body)
-        otp = data.get('otp', '').strip()
+        otp  = data.get('otp', '').strip()
 
         if not request.user.is_authenticated:
             return JsonResponse({'error': 'User not logged in.'}, status=401)
 
-        user = request.user
-
+        user    = request.user
         otp_obj = OTPVerification.objects.filter(
             user=user, method='email', is_used=False
         ).latest('created_at')
 
         if otp_obj.is_expired():
             return JsonResponse({'error': 'OTP has expired. Please request a new one.'}, status=400)
-
         if otp_obj.otp != otp:
             return JsonResponse({'error': 'Invalid OTP. Please try again.'}, status=400)
 
-        # Mark as used
         otp_obj.is_used = True
         otp_obj.save()
 
@@ -876,8 +965,9 @@ def verify_otp_only(request):
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
 
+
 # ─────────────────────────────────────────────
-# DOCUMENT PASSCODE — set & verify
+# DOCUMENT PASSCODE
 # ─────────────────────────────────────────────
 
 @csrf_exempt
@@ -917,31 +1007,200 @@ def verify_doc_passcode(request):
 
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
-    if request.method != 'POST':
-        return JsonResponse({'error': 'POST required'}, status=405)
+    
 
-    data   = json.loads(request.body)
-    action = data.get('action')  # 'set' or 'verify'
-    code   = data.get('code', '').strip()
+# ─────────────────────────────────────────────
+# 2FA VERIFY PAGE — shown after password login
+# ─────────────────────────────────────────────
 
-    if not code.isdigit() or len(code) != 4:
-        return JsonResponse({'error': 'Passcode must be exactly 4 digits.'}, status=400)
+@never_cache
+def two_fa_verify_view(request):
+    user_id = request.session.get('2fa_user_id')
+    if not user_id:
+        return redirect('login')
 
-    user = request.user
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return redirect('login')
 
-    if action == 'set':
-        user.doc_passcode = code
-        user.save()
-        request.session['doc_unlocked'] = True
-        return JsonResponse({'success': True, 'message': 'Passcode set successfully!'})
+    if request.method == 'POST':
+        otp      = request.POST.get('otp', '').strip()
+        next_url = request.session.get('2fa_next_url', 'dashboard')
 
-    elif action == 'verify':
-        if not user.doc_passcode:
-            return JsonResponse({'error': 'No passcode set.'}, status=400)
-        if user.doc_passcode == code:
-            request.session['doc_unlocked'] = True
-            return JsonResponse({'success': True})
+        if not otp or len(otp) != 6:
+            return render(request, '2fa_verify.html', {
+                'phone_hint': user.phone[-4:],
+                'error': 'Please enter the 6-digit OTP.',
+            })
+
+        try:
+            from twilio.rest import Client
+            client = Client(
+                settings.TWILIO_ACCOUNT_SID,
+                settings.TWILIO_AUTH_TOKEN,
+            )
+            result = client.verify.v2 \
+                .services(settings.TWILIO_VERIFY_SERVICE_SID) \
+                .verification_checks \
+                .create(to=f"+91{user.phone}", code=otp)
+
+            if result.status == 'approved':
+                # OTP correct — now actually log the user in
+                login(request, user)
+                send_login_notification(user, request)
+
+                # Clean up session
+                del request.session['2fa_user_id']
+                del request.session['2fa_next_url']
+
+                return redirect(next_url)
+            else:
+                return render(request, '2fa_verify.html', {
+                    'phone_hint': user.phone[-4:],
+                    'error': 'Invalid OTP. Please try again.',
+                })
+
+        except Exception as e:
+            return render(request, '2fa_verify.html', {
+                'phone_hint': user.phone[-4:],
+                'error': f'Verification failed: {str(e)}',
+            })
+
+    # GET request — show the page
+    return no_cache(render(request, '2fa_verify.html', {
+        'phone_hint': user.phone[-4:],
+    }))
+
+
+# ─────────────────────────────────────────────
+# 2FA RESEND OTP — called via AJAX from 2fa page
+# ─────────────────────────────────────────────
+
+@require_POST
+def two_fa_resend_view(request):
+    user_id = request.session.get('2fa_user_id')
+    if not user_id:
+        return JsonResponse({'error': 'Session expired.'}, status=400)
+
+    try:
+        user = User.objects.get(id=user_id)
+        from twilio.rest import Client
+        client = Client(
+            settings.TWILIO_ACCOUNT_SID,
+            settings.TWILIO_AUTH_TOKEN,
+        )
+        client.verify.v2 \
+            .services(settings.TWILIO_VERIFY_SERVICE_SID) \
+            .verifications \
+            .create(to=f"+91{user.phone}", channel="sms")
+
+        return JsonResponse({'success': True})
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+# ─────────────────────────────────────────────
+# TOGGLE 2FA — called via AJAX from Security tab
+# ─────────────────────────────────────────────
+
+@require_POST
+@login_required(login_url='login')
+def toggle_2fa_view(request):
+    try:
+        data   = json.loads(request.body)
+        enable = data.get('enable', False)
+        user   = request.user
+
+        if enable:
+            # Check phone number exists
+            if not user.phone:
+                return JsonResponse({
+                    'error': 'no_phone',
+                    'message': 'Please add your phone number in Profile tab first.'
+                }, status=400)
+
+            # Send OTP to verify phone before enabling
+            from twilio.rest import Client
+            client = Client(
+                settings.TWILIO_ACCOUNT_SID,
+                settings.TWILIO_AUTH_TOKEN,
+            )
+            client.verify.v2 \
+                .services(settings.TWILIO_VERIFY_SERVICE_SID) \
+                .verifications \
+                .create(to=f"+91{user.phone}", channel="sms")
+
+            return JsonResponse({
+                'success':    True,
+                'otp_sent':   True,
+                'phone_hint': user.phone[-4:],
+                'message':    f'OTP sent to number ending in {user.phone[-4:]}',
+            })
+
         else:
-            return JsonResponse({'error': 'Incorrect passcode. Please try again.'}, status=400)
+            # Disable 2FA directly — no OTP needed
+            user.is_2fa_enabled = False
+            user.save(update_fields=['is_2fa_enabled'])
+            return JsonResponse({
+                'success': True,
+                'enabled': False,
+                'message': '2FA disabled successfully.',
+            })
 
-    return JsonResponse({'error': 'Invalid action.'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+# ─────────────────────────────────────────────
+# CONFIRM 2FA ENABLE — verify OTP then enable
+# ─────────────────────────────────────────────
+
+@require_POST
+@login_required(login_url='login')
+def confirm_2fa_view(request):
+    try:
+        data = json.loads(request.body)
+        otp  = data.get('otp', '').strip()
+        user = request.user
+
+        if not otp or len(otp) != 6:
+            return JsonResponse({'error': 'Enter the 6-digit OTP.'}, status=400)
+
+        from twilio.rest import Client
+        client = Client(
+            settings.TWILIO_ACCOUNT_SID,
+            settings.TWILIO_AUTH_TOKEN,
+        )
+        result = client.verify.v2 \
+            .services(settings.TWILIO_VERIFY_SERVICE_SID) \
+            .verification_checks \
+            .create(to=f"+91{user.phone}", code=otp)
+
+        if result.status == 'approved':
+            user.is_2fa_enabled = True
+            user.save(update_fields=['is_2fa_enabled'])
+            return JsonResponse({
+                'success': True,
+                'enabled': True,
+                'message': '2FA enabled successfully! Your account is now more secure.',
+            })
+        else:
+            return JsonResponse({'error': 'Invalid OTP. Please try again.'}, status=400)
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+# Simple ping to keep session alive
+@login_required(login_url='login')
+def ping_view(request):
+    # Just return success - this resets the session timer
+    return JsonResponse({'status': 'ok'})
+
+# Ping view to keep session alive when user clicks "Stay Logged In"
+@login_required(login_url='login')
+def keep_alive_view(request):
+    # This empty view just resets the session timer on the server
+    return JsonResponse({'status': 'alive'})

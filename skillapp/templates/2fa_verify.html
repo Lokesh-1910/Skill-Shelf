@@ -1,0 +1,276 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Skill Shelf — Verify OTP</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'CSS/login.css' %}"/>
+    <style>
+        /* ── 2FA page uses login.css as base + small overrides ── */
+        .twofa-wrap {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f6f8fb;
+            font-family: 'IBM Plex Sans', sans-serif;
+        }
+        .twofa-card {
+            background: #fff;
+            border-radius: 20px;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.10);
+            padding: 48px 40px;
+            width: 100%;
+            max-width: 420px;
+            text-align: center;
+        }
+        .twofa-icon {
+            width: 70px; height: 70px;
+            background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 28px; color: #2563eb;
+        }
+        .twofa-card h1 {
+            font-size: 22px; font-weight: 700;
+            color: #1f2937; margin-bottom: 8px;
+        }
+        .twofa-card p {
+            font-size: 14px; color: #6b7280;
+            margin-bottom: 28px; line-height: 1.6;
+        }
+        .twofa-card p strong { color: #1f2937; }
+        .otp-boxes {
+            display: flex; justify-content: center;
+            gap: 10px; margin-bottom: 20px;
+        }
+        .otp-cell {
+            width: 48px; height: 54px;
+            text-align: center; font-size: 22px;
+            font-weight: 700;
+            border: 2px solid #d1d5db;
+            border-radius: 10px; outline: none;
+            color: #1e293b; background: #fff;
+            transition: all 0.2s;
+            font-family: 'IBM Plex Sans', sans-serif;
+        }
+        .otp-cell:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.12); }
+        .otp-cell.filled { border-color: #2563eb; background: #eff6ff; color: #2563eb; }
+        .submit-btn {
+            width: 100%;
+            padding: 14px;
+            background: #2563eb;
+            color: #fff;
+            border: none; border-radius: 10px;
+            font-size: 15px; font-weight: 600;
+            cursor: pointer;
+            display: flex; align-items: center;
+            justify-content: center; gap: 8px;
+            transition: all 0.2s;
+            margin-bottom: 16px;
+        }
+        .submit-btn:hover { background: #1d4ed8; transform: translateY(-1px); }
+        .status-msg {
+            font-size: 13px; font-weight: 500;
+            min-height: 20px; margin-bottom: 12px;
+            padding: 8px 12px; border-radius: 8px;
+        }
+        .status-error   { background: #fee2e2; color: #dc2626; }
+        .status-success { background: #d1fae5; color: #059669; }
+        .status-loading { color: #6b7280; }
+        .resend-row {
+            font-size: 13px; color: #6b7280; margin-top: 4px;
+        }
+        .resend-btn {
+            background: none; border: none;
+            color: #2563eb; font-weight: 600;
+            cursor: pointer; font-size: 13px;
+            padding: 0 4px;
+        }
+        .resend-btn:disabled { color: #9ca3af; cursor: not-allowed; }
+        .back-to-login {
+            display: block; margin-top: 20px;
+            font-size: 13px; color: #6b7280;
+            text-decoration: none;
+        }
+        .back-to-login:hover { color: #2563eb; }
+        .security-note {
+            display: flex; align-items: center;
+            gap: 8px; justify-content: center;
+            font-size: 12px; color: #9ca3af;
+            margin-top: 20px;
+        }
+        @keyframes shake {
+            0%,100%{ transform:translateX(0); }
+            25%    { transform:translateX(-6px); }
+            75%    { transform:translateX(6px); }
+        }
+        .shake { animation: shake 0.4s ease; }
+    </style>
+</head>
+<body>
+<div class="twofa-wrap">
+    <div class="twofa-card">
+
+        <div class="twofa-icon">
+            <i class="fas fa-shield-halved"></i>
+        </div>
+
+        <h1>Two-Factor Verification</h1>
+        <p>
+            A 6-digit OTP has been sent to your phone number
+            ending in <strong>••••{{ phone_hint }}</strong>.
+            Enter it below to sign in.
+        </p>
+
+        <!-- Error from Django (server side) -->
+        {% if error %}
+        <div class="status-msg status-error">
+            <i class="fas fa-circle-exclamation"></i> {{ error }}
+        </div>
+        {% endif %}
+
+        <!-- JS status message -->
+        <div id="twofa-msg" class="status-msg"></div>
+
+        <form method="POST" action="{% url '2fa_verify' %}" id="twofaForm">
+            {% csrf_token %}
+            <div class="otp-boxes" id="otpBoxes">
+                <input type="text" maxlength="1" class="otp-cell" id="f1"
+                       oninput="otpIn(this,null,'f2')" onkeydown="otpBack(event,this,null,'f2')">
+                <input type="text" maxlength="1" class="otp-cell" id="f2"
+                       oninput="otpIn(this,'f1','f3')" onkeydown="otpBack(event,this,'f1','f3')">
+                <input type="text" maxlength="1" class="otp-cell" id="f3"
+                       oninput="otpIn(this,'f2','f4')" onkeydown="otpBack(event,this,'f2','f4')">
+                <input type="text" maxlength="1" class="otp-cell" id="f4"
+                       oninput="otpIn(this,'f3','f5')" onkeydown="otpBack(event,this,'f3','f5')">
+                <input type="text" maxlength="1" class="otp-cell" id="f5"
+                       oninput="otpIn(this,'f4','f6')" onkeydown="otpBack(event,this,'f4','f6')">
+                <input type="text" maxlength="1" class="otp-cell" id="f6"
+                       oninput="otpIn(this,'f5',null)" onkeydown="otpBack(event,this,'f5',null)">
+            </div>
+
+            <!-- Hidden input collects full OTP on submit -->
+            <input type="hidden" name="otp" id="otpHidden">
+
+            <button type="submit" class="submit-btn" onclick="collectOtp(event)">
+                <i class="fas fa-check-circle"></i> Verify & Sign In
+            </button>
+        </form>
+
+        <div class="resend-row">
+            Didn't receive it?
+            <button class="resend-btn" id="resendBtn" onclick="resendOtp()">
+                Resend OTP
+            </button>
+            <span id="resendTimer"></span>
+        </div>
+
+        <a href="{% url 'login' %}" class="back-to-login">
+            <i class="fas fa-arrow-left"></i> Back to Login
+        </a>
+
+        <div class="security-note">
+            <i class="fas fa-lock"></i>
+            Secured by Twilio Verify
+        </div>
+
+    </div>
+</div>
+
+<script>
+    // ── OTP cell input ──
+    function otpIn(el, prevId, nextId) {
+        el.value = el.value.replace(/[^0-9]/g, '');
+        el.classList.toggle('filled', el.value !== '');
+        if (el.value && nextId) document.getElementById(nextId).focus();
+    }
+
+    function otpBack(e, el, prevId, nextId) {
+        if (e.key === 'Backspace' && !el.value && prevId) {
+            document.getElementById(prevId).focus();
+        }
+        el.classList.toggle('filled', el.value !== '');
+    }
+
+    // ── Collect OTP into hidden field before form submit ──
+    function collectOtp(e) {
+        const otp = ['f1','f2','f3','f4','f5','f6']
+            .map(id => document.getElementById(id).value).join('');
+        if (otp.length < 6) {
+            e.preventDefault();
+            showMsg('error', 'Please enter all 6 digits.');
+            document.getElementById('otpBoxes').classList.add('shake');
+            setTimeout(() => document.getElementById('otpBoxes').classList.remove('shake'), 400);
+            return;
+        }
+        document.getElementById('otpHidden').value = otp;
+    }
+
+    // ── Resend OTP via AJAX ──
+    async function resendOtp() {
+        showMsg('loading', 'Resending OTP...');
+        try {
+            const csrf = document.querySelector('[name=csrfmiddlewaretoken]').value;
+            const res  = await fetch("{% url '2fa_resend' %}", {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrf, 'Content-Type': 'application/json' },
+            });
+            const data = await res.json();
+            if (data.success) {
+                showMsg('success', 'OTP resent successfully!');
+                clearOtp();
+                startTimer();
+            } else {
+                showMsg('error', data.error || 'Failed to resend OTP.');
+            }
+        } catch (e) {
+            showMsg('error', 'Network error. Please try again.');
+        }
+    }
+
+    // ── Resend timer ──
+    function startTimer() {
+        const btn   = document.getElementById('resendBtn');
+        const timer = document.getElementById('resendTimer');
+        let secs    = 30;
+        btn.disabled = true;
+        timer.textContent = `(${secs}s)`;
+        const interval = setInterval(() => {
+            secs--;
+            timer.textContent = `(${secs}s)`;
+            if (secs <= 0) {
+                clearInterval(interval);
+                btn.disabled = false;
+                timer.textContent = '';
+            }
+        }, 1000);
+    }
+
+    function clearOtp() {
+        ['f1','f2','f3','f4','f5','f6'].forEach(id => {
+            const el = document.getElementById(id);
+            el.value = ''; el.classList.remove('filled');
+        });
+        document.getElementById('f1').focus();
+    }
+
+    function showMsg(type, text) {
+        const el = document.getElementById('twofa-msg');
+        el.textContent = text;
+        el.className   = 'status-msg';
+        if (type) el.classList.add('status-' + type);
+    }
+
+    // ── Auto-start timer & focus first cell on load ──
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('f1').focus();
+        startTimer();
+    });
+</script>
+</body>
+</html>

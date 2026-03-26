@@ -144,6 +144,14 @@ EMAIL_HOST_PASSWORD = 'ausduxoxcpkkcnxp'
 DEFAULT_FROM_EMAIL  = f'Skill Shelf <{EMAIL_HOST_USER}>'
 import os
 
-TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
-TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
-TWILIO_PHONE_NUMBER = '+15005550006'
+# settings.py — replace your current Twilio block with this
+
+TWILIO_ACCOUNT_SID        = env('TWILIO_ACCOUNT_SID',        default='')
+TWILIO_AUTH_TOKEN         = env('TWILIO_AUTH_TOKEN',          default='')
+TWILIO_PHONE_NUMBER       = env('TWILIO_PHONE_NUMBER',        default='')
+TWILIO_VERIFY_SERVICE_SID = env('TWILIO_VERIFY_SERVICE_SID', default='')
+
+# ── Session Expiry Settings ─────────────────────────────────────
+SESSION_COOKIE_AGE = 60 * 1                    # 15 minutes (in seconds)
+SESSION_SAVE_EVERY_REQUEST = True               # Reset timer on every request
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
