@@ -300,7 +300,7 @@
           const res = await fetch("/send-otp/", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ method: "email", value }),
+            body: JSON.stringify({ method: "email", email: value }),
           });
           const data = await res.json();
           if (data.success) {
@@ -329,7 +329,7 @@
           const res = await fetch("/verify-otp/", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ method: "email", value: currentValue, otp }),
+            body: JSON.stringify({ method: "email", email: currentValue, otp }),
           });
           const data = await res.json();
           if (data.success) {

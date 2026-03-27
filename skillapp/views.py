@@ -847,91 +847,125 @@ def chat_clear_api(request):
 # SEND OTP FOR SECURITY (Password / Passkey)
 # ─────────────────────────────────────────────
 
+# ─────────────────────────────────────────────
+# SEND OTP — PUBLIC ENDPOINT (No login required)
+# ─────────────────────────────────────────────
+
 @csrf_exempt
+@require_POST
 def send_otp_view(request):
-    if request.method != "POST":
-        return JsonResponse({'error': 'POST required'}, status=405)
-
     try:
-        data   = json.loads(request.body)
-        method = data.get('method')
+        data = json.loads(request.body)          # ← ADD THIS LINE
+        email = data.get('email', '').strip()
+        method = data.get('method', 'email')
 
-        if not request.user.is_authenticated:
-            return JsonResponse({'error': 'User not logged in.'}, status=401)
+        # If no email provided but user is logged in, use their email
+        if not email:
+            if request.user.is_authenticated:
+                email = request.user.email
+            else:
+                return JsonResponse({'error': 'Email is required'}, status=400)
 
-        user  = request.user
-        value = user.email if method == 'email' else user.phone
+        # Check if user exists
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return JsonResponse({'error': 'No account found with this email'}, status=404)
 
-        otp = OTPVerification.generate_otp()
+        # Generate OTP
+        import random
+        otp = str(random.randint(100000, 999999))
 
-        OTPVerification.objects.filter(user=user, method=method, is_used=False).delete()
-        OTPVerification.objects.create(user=user, otp=otp, method=method)
+        # Save OTP
+        OTPVerification.objects.filter(user=user, method='email', is_used=False).delete()
+        OTPVerification.objects.create(
+            user=user,
+            otp=otp,
+            method='email'
+        )
 
-        if method == 'email':
-            try:
-                send_mail(
-                    subject='Skill Shelf Security OTP',
-                    message=f'Hello {user.full_name},\n\nYour OTP is: {otp}\nValid for 5 minutes.',
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=[value],
-                    fail_silently=False,
-                )
-                return JsonResponse({'success': True, 'message': f'OTP sent to {value}'})
-            except Exception as e:
-                return JsonResponse({'error': f'Email failed: {str(e)}'}, status=500)
+        # Send Email
+        try:
+            send_mail(
+                subject='Skill Shelf - Login OTP',
+                message=(
+                    f'Hello {user.full_name or "User"},\n\n'
+                    f'Your Skill Shelf login OTP is: **{otp}**\n\n'
+                    f'This OTP is valid for 10 minutes.\n\n'
+                    f'If you did not request this, please ignore this email.'
+                ),
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[email],
+                fail_silently=False,
+            )
+            return JsonResponse({
+                'success': True,
+                'message': f'OTP sent successfully to {email}'
+            })
+        except Exception as e:
+            return JsonResponse({'error': f'Failed to send email: {str(e)}'}, status=500)
 
-        elif method == 'mobile':
-            pass
-
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON'}, status=400)
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=400)
-
+        return JsonResponse({'error': str(e)}, status=500)
 
 # ─────────────────────────────────────────────
 # VERIFY OTP
 # ─────────────────────────────────────────────
 
 @csrf_exempt
+@require_POST
 def verify_otp_view(request):
-    if request.method != "POST":
-        return JsonResponse({'error': 'POST required'}, status=405)
-
-    data   = json.loads(request.body)
-    method = data.get('method')
-    value  = data.get('value', '').strip()
-    otp    = data.get('otp', '').strip()
-
     try:
-        user = User.objects.get(email=value) if method == 'email' else User.objects.get(phone=value)
-    except User.DoesNotExist:
-        return JsonResponse({'error': 'User not found.'}, status=404)
+        data = json.loads(request.body)
+        email = data.get('email', '').strip()
+        otp = data.get('otp', '').strip()
 
-    try:
-        otp_obj = OTPVerification.objects.filter(
-            user=user, method=method, is_used=False
-        ).latest('created_at')
-    except OTPVerification.DoesNotExist:
-        return JsonResponse({'error': 'No OTP found. Please request a new one.'}, status=400)
+        if not email or not otp:
+            return JsonResponse({'error': 'Email and OTP are required'}, status=400)
 
-    if otp_obj.is_expired():
-        return JsonResponse({'error': 'OTP has expired. Please request a new one.'}, status=400)
-    if otp_obj.otp != otp:
-        return JsonResponse({'error': 'Invalid OTP. Please try again.'}, status=400)
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return JsonResponse({'error': 'User not found'}, status=404)
 
-    otp_obj.is_used = True
-    otp_obj.save()
+        # Get latest unused OTP
+        try:
+            otp_obj = OTPVerification.objects.filter(
+                user=user, 
+                method='email', 
+                is_used=False
+            ).latest('created_at')
+        except OTPVerification.DoesNotExist:
+            return JsonResponse({'error': 'No OTP found. Please request a new one.'}, status=400)
 
-    from django.contrib.auth import login
-    user.backend = 'django.contrib.auth.backends.ModelBackend'
-    login(request, user)
+        if otp_obj.is_expired():
+            return JsonResponse({'error': 'OTP has expired. Please request a new one.'}, status=400)
 
-    return JsonResponse({'success': True, 'redirect': '/dashboard/'})
+        if otp_obj.otp != otp:
+            return JsonResponse({'error': 'Invalid OTP'}, status=400)
 
+        # Mark OTP as used
+        otp_obj.is_used = True
+        otp_obj.save()
+
+        # Log the user in
+        login(request, user)
+
+        return JsonResponse({
+            'success': True,
+            'message': 'Login successful',
+            'redirect': '/dashboard/'
+        })
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
 @csrf_exempt
+@require_POST
 def resend_otp_view(request):
-    return send_otp_view(request)
-
+    return send_otp_view(request)   # Reuse the same logic
 
 @csrf_exempt
 def verify_otp_only(request):
