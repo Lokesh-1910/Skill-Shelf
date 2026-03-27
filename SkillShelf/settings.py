@@ -35,7 +35,7 @@ SITE_URL = 'http://localhost:8000'
 SECRET_KEY = env('SECRET_KEY', default='django-insecure-#i$dqu)!bb#g$f_c3u#ny4fw_e%9&u*58)0_c8qzk$)btj3aau')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
